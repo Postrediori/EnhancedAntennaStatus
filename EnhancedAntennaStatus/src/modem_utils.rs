@@ -91,7 +91,7 @@ impl ModemStatus {
     pub fn get_band(&self) -> String {
         let ca_count = self.get_ca_count();
         let band = format!("{}{}",
-            String::from_iter(self.band.iter()),
+            String::from_iter(self.band.iter()).trim_matches(char::from(0)).to_string(),
             if ca_count > 0 { format!("+{ca_count}CA") } else { "".to_string() }
         );
         band
@@ -102,10 +102,16 @@ impl ModemStatus {
         (cell_id_hex, cell_id)
     }
     pub fn get_manufacturer_and_model(&self) -> (String, String) {
-        (String::from_iter(self.manufacturer.iter()), String::from_iter(self.model.iter()))
+        (
+            String::from_iter(self.manufacturer.iter()).trim_matches(char::from(0)).to_string(),
+            String::from_iter(self.model.iter()).trim_matches(char::from(0)).to_string()
+        )
     }
     pub fn get_battery_percent_and_status(&self) -> (i64, String) {
-        (self.battery_percent, String::from_iter(self.battery_status.iter()))
+        (
+            self.battery_percent,
+            String::from_iter(self.battery_status.iter()).trim_matches(char::from(0)).to_string()
+        )
     }
 }
 

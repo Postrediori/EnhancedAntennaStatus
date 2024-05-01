@@ -2,7 +2,7 @@
 
 ## Description
 
-UI util that checks modem status.
+UI util that checks modem status and shows history bar plot of signal strength parameters. This data may be helpful during precise antenna pointing or positioning the modem when using internal antenna only.
 
 ![Dashboard with Netgear modem](images/ac785s.png)
 
@@ -15,13 +15,10 @@ Tested on:
 ## TODO
 
 - UI enhancements
-  - [ ] Hide unused info (e.g. 3G in LTE mode)
+  - [x] Hide unused info (e.g. 3G in LTE mode)
   - [ ] Adjust poll timeout (longer timeouts to reduce load on the modem)
-- [ ] Auto-detect modem manufacturer (why? users usually know the manufacturer)
 - [ ] Create pre-filled list of host addresses: scan networks and get gateways
 - [ ] Additional info for Netgear from Telnet (channels and band widths) (need to resolve long timeout issues)
-- [ ] Huawei support
-  - [ ] Set LTE band list
 - [ ] Download/upload bar plot
 
 ## Links

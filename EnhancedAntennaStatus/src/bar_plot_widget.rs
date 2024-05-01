@@ -100,10 +100,6 @@ impl BarPlotWidget {
     pub fn clear_history(&mut self) {
         self.history.borrow_mut().clear();
     }
-    pub fn fixed_with_flex(&mut self, flex: &mut group::Flex, size: i32) {
-        // TODO: Refactor to use normal flex.fixed() syntax
-        flex.fixed(&self.inner, size);
-    }
 }
 
 widget_extends!(BarPlotWidget, widget::Widget, inner);

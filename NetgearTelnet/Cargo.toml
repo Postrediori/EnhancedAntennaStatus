@@ -1,5 +1,5 @@
 [package]
-name = "telnet_test"
+name = "netgear_telnet"
 version = "0.1.0"
 edition = "2021"
 

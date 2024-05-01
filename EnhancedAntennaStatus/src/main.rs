@@ -4,6 +4,9 @@ use modem_utils::{*};
 mod bar_plot_widget;
 use bar_plot_widget::{*};
 
+mod res;
+use res::IconsAssets;
+
 use fltk::{*, prelude::{*}};
 use std::thread;
 use std::time::Duration;
@@ -57,7 +60,7 @@ fn main() {
     let (tx, rx) = app::channel::<Message>();
 
     const WIDTH: i32 = 480;
-    const HEIGHT: i32 = 600;
+    const HEIGHT: i32 = 650;
     let mut wnd = window::Window::default()
         .with_size(WIDTH, HEIGHT).with_label("Enhanced Antenna Status");
 
@@ -116,7 +119,7 @@ fn main() {
         set_param_label!(rssi_label);
 
         row.end();
-        info_flex.fixed(&row, 15);
+        info_flex.fixed(&row, 20);
 
         (network_mode_label, rssi_label)
     };
@@ -139,7 +142,7 @@ fn main() {
         set_param_label!(band_label);
 
         row.end();
-        info_flex.fixed(&row, 15);
+        info_flex.fixed(&row, 20);
 
         (plmn_label, band_label)
     };
@@ -156,13 +159,96 @@ fn main() {
         set_param_label!(cellid_label);
 
         row.end();
-        info_flex.fixed(&row, 15);
+        info_flex.fixed(&row, 20);
 
         cellid_label
     };
 
     info_flex.end();
-    main_flex.fixed(&info_flex, 90);
+    main_flex.fixed(&info_flex, 100);
+
+    /*
+     * Modem info
+     */
+    let mut modem_info_flex = group::Flex::default_fill()
+        .column()
+        .with_label("Modem Info");
+    set_frame_style!(modem_info_flex);
+    modem_info_flex.set_margin(5);
+
+    add_flex_spacer!(modem_info_flex, 10);
+
+    let (mut manufacturer_label, mut model_label) = {
+        let mut row = group::Flex::default_fill()
+            .row();
+        row.set_spacing(5);
+
+        add_flex_spacer!(row, 110);
+
+        let mut manufacturer_label = output::Output::default()
+            .with_label("Manufacturer:");
+        set_param_label!(manufacturer_label);
+
+        add_flex_spacer!(row, 75);
+
+        let mut model_label = output::Output::default()
+            .with_label("Model:");
+        set_param_label!(model_label);
+
+        row.end();
+        modem_info_flex.fixed(&row, 20);
+
+        (manufacturer_label, model_label)
+    };
+
+    let (mut battery_percent_label, mut battery_status_label) = {
+        let mut row = group::Flex::default_fill()
+            .row();
+        row.set_spacing(5);
+
+        add_flex_spacer!(row, 75);
+
+        let mut battery_percent_label = output::Output::default()
+            .with_label("Battery:");
+        set_param_label!(battery_percent_label);
+
+        add_flex_spacer!(row, 50);
+
+        let mut battery_status_label = output::Output::default()
+            .with_label("Charge:");
+        set_param_label!(battery_status_label);
+
+        row.end();
+        modem_info_flex.fixed(&row, 20);
+
+        (battery_percent_label, battery_status_label)
+    };
+
+    let (mut device_temp_label, mut battery_temp_label) = {
+        let mut row = group::Flex::default_fill()
+            .row();
+        row.set_spacing(5);
+
+        add_flex_spacer!(row, 90);
+
+        let mut device_temp_label = output::Output::default()
+            .with_label("Device Temp:");
+        set_param_label!(device_temp_label);
+
+        add_flex_spacer!(row, 75);
+
+        let mut battery_temp_label = output::Output::default()
+            .with_label("Battery Temp:");
+        set_param_label!(battery_temp_label);
+
+        row.end();
+        modem_info_flex.fixed(&row, 20);
+
+        (device_temp_label, battery_temp_label)
+    };
+
+    info_flex.end();
+    main_flex.fixed(&modem_info_flex, 105);
 
     /*
      * WCDMA signal status
@@ -221,7 +307,6 @@ fn main() {
     };
 
     let mut rscp_plot = BarPlotWidget::new();
-    rscp_plot.fixed_with_flex(&mut wcdma_flex, 25);
     rscp_plot.set_range(-100, -70);
 
     let mut ecio_label = {
@@ -241,11 +326,9 @@ fn main() {
     };
 
     let mut ecio_plot = BarPlotWidget::new();
-    ecio_plot.fixed_with_flex(&mut wcdma_flex, 25);
     ecio_plot.set_range(-10, -2);
 
     wcdma_flex.end();
-    main_flex.fixed(&wcdma_flex, 150);
 
     /*
      * LTE signal status
@@ -276,7 +359,7 @@ fn main() {
         set_param_label!(lte_pci_label);
 
         row.end();
-        lte_flex.fixed(&row, 15);
+        lte_flex.fixed(&row, 20);
 
         (lte_enb_cc_label, lte_pci_label)
     };
@@ -298,7 +381,6 @@ fn main() {
     };
 
     let mut rsrq_plot = BarPlotWidget::new();
-    rsrq_plot.fixed_with_flex(&mut lte_flex, 25);
     rsrq_plot.set_range(-16, -3);
 
     let mut rsrp_label = {
@@ -318,7 +400,6 @@ fn main() {
     };
 
     let mut rsrp_plot = BarPlotWidget::new();
-    rsrp_plot.fixed_with_flex(&mut lte_flex, 25);
     rsrp_plot.set_range(-130, -60);
 
     let mut sinr_label = {
@@ -338,100 +419,20 @@ fn main() {
     };
 
     let mut sinr_plot = BarPlotWidget::new();
-    sinr_plot.fixed_with_flex(&mut lte_flex, 25);
     sinr_plot.set_range(0, 24);
     
     lte_flex.end();
-    main_flex.fixed(&lte_flex, 195);
-
-    /*
-     * Modem info
-     */
-    let mut modem_info_flex = group::Flex::default_fill()
-        .column()
-        .with_label("Modem Info");
-    set_frame_style!(modem_info_flex);
-    modem_info_flex.set_margin(5);
-
-    add_flex_spacer!(modem_info_flex, 10);
-
-    let (mut manufacturer_label, mut model_label) = {
-        let mut row = group::Flex::default_fill()
-            .row();
-        row.set_spacing(5);
-
-        add_flex_spacer!(row, 110);
-
-        let mut manufacturer_label = output::Output::default()
-            .with_label("Manufacturer:");
-        set_param_label!(manufacturer_label);
-
-        add_flex_spacer!(row, 115);
-
-        let mut model_label = output::Output::default()
-            .with_label("Model:");
-        set_param_label!(model_label);
-
-        row.end();
-        modem_info_flex.fixed(&row, 15);
-
-        (manufacturer_label, model_label)
-    };
-
-    let (mut battery_percent_label, mut battery_status_label) = {
-        let mut row = group::Flex::default_fill()
-            .row();
-        row.set_spacing(5);
-
-        add_flex_spacer!(row, 75);
-
-        let mut battery_percent_label = output::Output::default()
-            .with_label("Battery:");
-        set_param_label!(battery_percent_label);
-
-        add_flex_spacer!(row, 50);
-
-        let mut battery_status_label = output::Output::default()
-            .with_label("Charge:");
-        set_param_label!(battery_status_label);
-
-        row.end();
-        modem_info_flex.fixed(&row, 15);
-
-        (battery_percent_label, battery_status_label)
-    };
-
-    let (mut device_temp_label, mut battery_temp_label) = {
-        let mut row = group::Flex::default_fill()
-            .row();
-        row.set_spacing(5);
-
-        add_flex_spacer!(row, 90);
-
-        let mut device_temp_label = output::Output::default()
-            .with_label("Device Temp:");
-        set_param_label!(device_temp_label);
-
-        add_flex_spacer!(row, 75);
-
-        let mut battery_temp_label = output::Output::default()
-            .with_label("Battery Temp:");
-        set_param_label!(battery_temp_label);
-
-        row.end();
-        modem_info_flex.fixed(&row, 15);
-
-        (device_temp_label, battery_temp_label)
-    };
-
-    info_flex.end();
-    main_flex.fixed(&modem_info_flex, 95);
-
 
     /*
      * Final setup of window
      */
     main_flex.end();
+
+    if let Some(img) = IconsAssets::get("EnhancedAntennaStatus32.png") {
+        if let Ok(img) = fltk::image::PngImage::from_data(img.data.as_ref()) {
+            wnd.set_icon(Some(img));
+        }
+    }
 
     wnd.end();
     wnd.make_resizable(true);
@@ -441,6 +442,9 @@ fn main() {
      */
     host_input.set_value("192.168.1.1");
     connect_button.emit(tx, Message::StartStopPolling);
+
+    wcdma_flex.hide();
+    lte_flex.hide();
 
     wnd.show();
 
@@ -453,10 +457,14 @@ fn main() {
     let host_address = "".to_string();
     let host_address = Rc::from(RefCell::from(host_address));
 
+    let mut current_pci = -1;
     let mut current_mode = NetworkMode::Unknown;
 
+    let mut jh_poller: Option<std::thread::JoinHandle<()>> = None;
+    let mut jh_getinfo: Option<std::thread::JoinHandle<()>> = None;
+
     /*
-     * Run cycle
+     * Run main event loop
      */
     {
         let run_poller = run_poller.clone();
@@ -483,22 +491,27 @@ fn main() {
                     },
                     Message::GetInfo => {
                         println!("Connecting to host {}", *host_address);
-                        thread::spawn({
+
+                        // Wait for existing thread to stop
+                        if let Some(jh) = jh_getinfo {
+                            jh.join().unwrap();
+                        }
+
+                        jh_getinfo = Some(thread::spawn({
                             let host_address = host_address.clone();
                             move || {
                                 if let Some(modem_info) = NetgearParser::get_info(host_address.as_str()) {
                                     tx.send(Message::ReceivedInfo(modem_info))
                                 }
                             }
-                        });
+                        }));
                     },
                     Message::ReceivedInfo(info) => {
                         println!("{info}\n");
 
                         network_mode_label.set_value(info.get_mode().as_str());
             
-                        let rssi = format!("{} dBm", info.rssi);
-                        rssi_label.set_value(&rssi);
+                        rssi_label.set_value(format!("{} dBm", info.rssi).as_str());
             
                         plmn_label.set_value(&info.get_plmn());
             
@@ -537,17 +550,22 @@ fn main() {
                     },
                     Message::Poller => {
                         if *run_poller {
+                            // Stop previous thread
+                            if let Some(jh) = jh_poller {
+                                jh.join().unwrap();
+                            }
+
                             // Make step and schedule next 'Running' poll
-                            thread::spawn(move || {
+                            jh_poller = Some(thread::spawn(move || {
                                 tx.send(Message::GetInfo);
                                 thread::sleep(Duration::from_millis(POLLER_TIMEOUT));
                                 tx.send(Message::Poller);
-                            });
+                            }));
                         }
                     },
                     Message::SetMode(mode) => {
                         // Clean WCDMA status
-                        wcdma_flex.deactivate();
+                        wcdma_flex.hide();
 
                         wcdma_sc_label.set_value("");
                         wcdma_rnc_label.set_value("");
@@ -560,7 +578,7 @@ fn main() {
                         ecio_plot.clear_history();
 
                         // Clean LTE status
-                        lte_flex.deactivate();
+                        lte_flex.hide();
 
                         lte_enb_cc_label.set_value("");
                         lte_pci_label.hide();
@@ -576,14 +594,16 @@ fn main() {
                         // Set active mode
                         match mode {
                             NetworkMode::Lte => {
-                                lte_flex.activate();
+                                lte_flex.show();
                             }
                             NetworkMode::Wcdma => {
-                                wcdma_flex.activate();
+                                wcdma_flex.show();
                             }
                             _ => { }
                         };
-                        
+
+                        main_flex.layout();
+
                         current_mode = mode;
                     },
                     Message::SetWcdmaInfo(wcdma_info) => {
@@ -598,12 +618,16 @@ fn main() {
                         ecio_plot.push_value(wcdma_info.ecio);
                     },
                     Message::SetLteInfo(lte_info) => {
-                        if lte_info.pci == -1 {
-                            lte_pci_label.hide();
-                        }
-                        else {
-                            lte_pci_label.show();
-                            lte_pci_label.set_value(&lte_info.pci.to_string());
+                        if current_pci != lte_info.pci {
+                            if lte_info.pci == -1 {
+                                lte_pci_label.hide();
+                            }
+                            else {
+                                lte_pci_label.show();
+                                lte_pci_label.set_value(&lte_info.pci.to_string());
+                            }
+                            lte_flex.layout();
+                            current_pci = lte_info.pci;
                         }
     
                         lte_enb_cc_label.set_value(format!("{}/{}", lte_info.enb, lte_info.id).as_str());
@@ -621,6 +645,16 @@ fn main() {
         }
     }
 
-    *run_poller.borrow_mut() = false;
-    // TODO Join
+    // Stop all threads
+    {
+        *run_poller.borrow_mut() = false;
+
+        if let Some(jh) = jh_poller {
+            jh.join().unwrap();
+        }
+
+        if let Some(jh) = jh_getinfo {
+            jh.join().unwrap();
+        }
+    }
 }
