@@ -1,13 +1,19 @@
+mod bandwidth_utils;
+use bandwidth_utils::*;
+
 mod modem_utils;
-use modem_utils::{*};
+use modem_utils::*;
 
 mod bar_plot_widget;
-use bar_plot_widget::{*};
+use bar_plot_widget::*;
+
+mod utils;
+use utils::*;
 
 mod res;
 use res::IconsAssets;
 
-use fltk::{*, prelude::{*}};
+use fltk::{*, prelude::*};
 use std::thread;
 use std::time::Duration;
 use std::{cell::RefCell, rc::Rc};
@@ -23,6 +29,7 @@ enum Message {
     SetMode(NetworkMode),
     SetWcdmaInfo(WcdmaSignalInfo),
     SetLteInfo(LteSignalInfo),
+    Quit,
 }
 
 const PARAM_COLOR: enums::Color = enums::Color::DarkRed;
@@ -59,15 +66,15 @@ fn main() {
 
     let (tx, rx) = app::channel::<Message>();
 
-    const WIDTH: i32 = 480;
-    const HEIGHT: i32 = 650;
+    const WIDTH: i32 = 840;
+    const HEIGHT: i32 = 435;
     let mut wnd = window::Window::default()
         .with_size(WIDTH, HEIGHT).with_label("Enhanced Antenna Status");
 
-    let mut main_flex = group::Flex::default_fill()
+    let mut main_group = group::Flex::default_fill()
         .column();
-    main_flex.set_margin(10);
-    main_flex.set_spacing(5);
+    main_group.set_margin(10);
+    main_group.set_spacing(5);
 
     let (mut host_input, mut connect_button) = {
         let mut row = group::Flex::default_fill()
@@ -85,21 +92,24 @@ fn main() {
         add_flex_spacer!(row, 55);
 
         row.end();
-        main_flex.fixed(&row, 25);
+        main_group.fixed(&row, 25);
 
         (host_input, connect_button)
     };
 
+    let info_group_container = group::Flex::default_fill()
+        .row();
+
     /*
      * General info
      */
-    let mut info_flex = group::Flex::default_fill()
+    let mut info_group = group::Flex::default_fill()
         .column()
         .with_label("General Info");
-    set_frame_style!(info_flex);
-    info_flex.set_margin(5);
+    set_frame_style!(info_group);
+    info_group.set_margin(5);
 
-    add_flex_spacer!(info_flex, 10);
+    add_flex_spacer!(info_group, 10);
 
     let (mut network_mode_label, mut rssi_label) = {
         let mut row = group::Flex::default_fill()
@@ -119,7 +129,7 @@ fn main() {
         set_param_label!(rssi_label);
 
         row.end();
-        info_flex.fixed(&row, 20);
+        info_group.fixed(&row, 20);
 
         (network_mode_label, rssi_label)
     };
@@ -142,7 +152,7 @@ fn main() {
         set_param_label!(band_label);
 
         row.end();
-        info_flex.fixed(&row, 20);
+        info_group.fixed(&row, 20);
 
         (plmn_label, band_label)
     };
@@ -159,24 +169,23 @@ fn main() {
         set_param_label!(cellid_label);
 
         row.end();
-        info_flex.fixed(&row, 20);
+        info_group.fixed(&row, 20);
 
         cellid_label
     };
 
-    info_flex.end();
-    main_flex.fixed(&info_flex, 100);
+    info_group.end();
 
     /*
      * Modem info
      */
-    let mut modem_info_flex = group::Flex::default_fill()
+    let mut modem_info_group = group::Flex::default_fill()
         .column()
         .with_label("Modem Info");
-    set_frame_style!(modem_info_flex);
-    modem_info_flex.set_margin(5);
+    set_frame_style!(modem_info_group);
+    modem_info_group.set_margin(5);
 
-    add_flex_spacer!(modem_info_flex, 10);
+    add_flex_spacer!(modem_info_group, 10);
 
     let (mut manufacturer_label, mut model_label) = {
         let mut row = group::Flex::default_fill()
@@ -189,14 +198,14 @@ fn main() {
             .with_label("Manufacturer:");
         set_param_label!(manufacturer_label);
 
-        add_flex_spacer!(row, 75);
+        add_flex_spacer!(row, 60);
 
         let mut model_label = output::Output::default()
             .with_label("Model:");
         set_param_label!(model_label);
 
         row.end();
-        modem_info_flex.fixed(&row, 20);
+        modem_info_group.fixed(&row, 20);
 
         (manufacturer_label, model_label)
     };
@@ -219,7 +228,7 @@ fn main() {
         set_param_label!(battery_status_label);
 
         row.end();
-        modem_info_flex.fixed(&row, 20);
+        modem_info_group.fixed(&row, 20);
 
         (battery_percent_label, battery_status_label)
     };
@@ -242,24 +251,29 @@ fn main() {
         set_param_label!(battery_temp_label);
 
         row.end();
-        modem_info_flex.fixed(&row, 20);
+        modem_info_group.fixed(&row, 20);
 
         (device_temp_label, battery_temp_label)
     };
 
-    info_flex.end();
-    main_flex.fixed(&modem_info_flex, 105);
+    info_group.end();
+
+    info_group_container.end();
+    main_group.fixed(&info_group_container, 105);
+
+    let plot_group_container = group::Flex::default_fill()
+        .row();
 
     /*
      * WCDMA signal status
      */
-    let mut wcdma_flex = group::Flex::default_fill()
+    let mut wcdma_group = group::Flex::default_fill()
         .column()
         .with_label("3G");
-    set_frame_style!(wcdma_flex);
-    wcdma_flex.set_margin(5);
+    set_frame_style!(wcdma_group);
+    wcdma_group.set_margin(5);
 
-    add_flex_spacer!(wcdma_flex, 10);
+    add_flex_spacer!(wcdma_group, 10);
 
     let (mut wcdma_nb_cc_label, mut wcdma_rnc_label, mut wcdma_sc_label) = {
         let mut row = group::Flex::default_fill()
@@ -285,7 +299,7 @@ fn main() {
         set_param_label!(wcdma_sc_label);
 
         row.end();
-        wcdma_flex.fixed(&row, 15);
+        wcdma_group.fixed(&row, 15);
 
         (wcdma_nb_cc_label, wcdma_rnc_label, wcdma_sc_label)
     };
@@ -301,7 +315,7 @@ fn main() {
         set_param_label!(rscp_label);
 
         row.end();
-        wcdma_flex.fixed(&row, 15);
+        wcdma_group.fixed(&row, 15);
 
         rscp_label
     };
@@ -320,7 +334,7 @@ fn main() {
         set_param_label!(ecio_label);
 
         row.end();
-        wcdma_flex.fixed(&row, 15);
+        wcdma_group.fixed(&row, 15);
 
         ecio_label
     };
@@ -328,18 +342,18 @@ fn main() {
     let mut ecio_plot = BarPlotWidget::new();
     ecio_plot.set_range(-10, -2);
 
-    wcdma_flex.end();
+    wcdma_group.end();
 
     /*
      * LTE signal status
      */
-    let mut lte_flex = group::Flex::default_fill()
+    let mut lte_group = group::Flex::default_fill()
         .column()
         .with_label("LTE");
-    set_frame_style!(lte_flex);
-    lte_flex.set_margin(5);
+    set_frame_style!(lte_group);
+    lte_group.set_margin(5);
 
-    add_flex_spacer!(lte_flex, 10);
+    add_flex_spacer!(lte_group, 10);
 
     let (mut lte_enb_cc_label, mut lte_pci_label) = {
         let mut row = group::Flex::default_fill()
@@ -359,7 +373,7 @@ fn main() {
         set_param_label!(lte_pci_label);
 
         row.end();
-        lte_flex.fixed(&row, 20);
+        lte_group.fixed(&row, 20);
 
         (lte_enb_cc_label, lte_pci_label)
     };
@@ -375,7 +389,7 @@ fn main() {
         set_param_label!(rsrq_label);
 
         row.end();
-        lte_flex.fixed(&row, 15);
+        lte_group.fixed(&row, 15);
 
         rsrq_label
     };
@@ -394,7 +408,7 @@ fn main() {
         set_param_label!(rsrp_label);
 
         row.end();
-        lte_flex.fixed(&row, 15);
+        lte_group.fixed(&row, 15);
 
         rsrp_label
     };
@@ -413,7 +427,7 @@ fn main() {
         set_param_label!(sinr_label);
 
         row.end();
-        lte_flex.fixed(&row, 15);
+        lte_group.fixed(&row, 15);
 
         sinr_label
     };
@@ -421,12 +435,65 @@ fn main() {
     let mut sinr_plot = BarPlotWidget::new();
     sinr_plot.set_range(0, 24);
     
-    lte_flex.end();
+    lte_group.end();
+
+    /*
+     * Bandwidth
+     */
+    let mut bandwidth_group = group::Flex::default_fill()
+        .column()
+        .with_label("Bandwidth");
+    set_frame_style!(bandwidth_group);
+    bandwidth_group.set_margin(5);
+
+    add_flex_spacer!(bandwidth_group, 10);
+
+    let (mut dl_label, mut ul_label) = {
+        let mut row = group::Flex::default_fill()
+            .row();
+        row.set_spacing(5);
+
+        add_flex_spacer!(row, 75);
+
+        let mut dl_label = output::Output::default()
+            .with_label("Download:");
+        set_param_label!(dl_label);
+
+        add_flex_spacer!(row, 75);
+
+        let mut ul_label = output::Output::default()
+            .with_label("Upload:");
+        set_param_label!(ul_label);
+
+        row.end();
+        bandwidth_group.fixed(&row, 20);
+
+        (dl_label, ul_label)
+    };
+
+    let mut dlul_plot = DlUlBarPlotWidget::new();
+
+    bandwidth_group.end();
+
+    plot_group_container.end();
+
+    /*
+     * Footer
+     */
+    let mut footer_group = group::Flex::default_fill()
+        .row();
+    frame::Frame::default();
+    let mut close_button = button::Button::default()
+        .with_label("Close");
+    footer_group.fixed(&close_button, 75);
+    footer_group.end();
+
+    main_group.fixed(&footer_group, 25);
 
     /*
      * Final setup of window
      */
-    main_flex.end();
+    main_group.end();
 
     if let Some(img) = IconsAssets::get("EnhancedAntennaStatus32.png") {
         if let Ok(img) = fltk::image::PngImage::from_data(img.data.as_ref()) {
@@ -442,9 +509,10 @@ fn main() {
      */
     host_input.set_value("192.168.1.1");
     connect_button.emit(tx, Message::StartStopPolling);
+    close_button.emit(tx, Message::Quit);
 
-    wcdma_flex.hide();
-    lte_flex.hide();
+    wcdma_group.hide();
+    lte_group.hide();
 
     wnd.show();
 
@@ -457,11 +525,13 @@ fn main() {
     let host_address = "".to_string();
     let host_address = Rc::from(RefCell::from(host_address));
 
-    let mut current_pci = -1;
-    let mut current_mode = NetworkMode::Unknown;
+    let mut current_pci = ValueChangeObserver::<i64>::new();
+    let mut current_mode = ValueChangeObserver::<NetworkMode>::new();
 
     let mut jh_poller: Option<std::thread::JoinHandle<()>> = None;
     let mut jh_getinfo: Option<std::thread::JoinHandle<()>> = None;
+
+    let mut dlul = BandwidthCounter::new();
 
     /*
      * Run main event loop
@@ -520,7 +590,7 @@ fn main() {
                         let (cell_id_hex, cell_id) = info.get_cell_id_hex_and_dec();
                         cellid_label.set_value(format!("{cell_id_hex}/{cell_id}").as_str());
             
-                        if current_mode != info.mode {
+                        if current_mode.update_and_check_if_changed(info.mode) {
                             tx.send(Message::SetMode(info.mode));
                         }
 
@@ -546,6 +616,19 @@ fn main() {
                         device_temp_label.set_value(format!("{}°C", info.device_temp).as_str());
                         battery_temp_label.set_value(format!("{}°C", info.battery_temp).as_str());
 
+                        // Bandwidth
+                        if let Some(dlul) = dlul.update_with_total_values((info.dl, info.ul)) {
+                            let dl_str = format_bandwidth(dlul.0);
+                            let ul_str = format_bandwidth(dlul.1);
+
+                            dl_label.set_value(&dl_str);
+                            ul_label.set_value(&ul_str);
+
+                            println!("Download : {dl_str} Upload : {ul_str}\n");
+
+                            dlul_plot.push_value(dlul);
+                        }
+
                         wnd.redraw();
                     },
                     Message::Poller => {
@@ -565,7 +648,7 @@ fn main() {
                     },
                     Message::SetMode(mode) => {
                         // Clean WCDMA status
-                        wcdma_flex.hide();
+                        wcdma_group.hide();
 
                         wcdma_sc_label.set_value("");
                         wcdma_rnc_label.set_value("");
@@ -578,7 +661,7 @@ fn main() {
                         ecio_plot.clear_history();
 
                         // Clean LTE status
-                        lte_flex.hide();
+                        lte_group.hide();
 
                         lte_enb_cc_label.set_value("");
                         lte_pci_label.hide();
@@ -591,20 +674,21 @@ fn main() {
                         rsrq_plot.clear_history();
                         sinr_plot.clear_history();
 
+                        dlul_plot.clear_history();
+
                         // Set active mode
                         match mode {
                             NetworkMode::Lte => {
-                                lte_flex.show();
+                                lte_group.show();
                             }
                             NetworkMode::Wcdma => {
-                                wcdma_flex.show();
+                                wcdma_group.show();
                             }
                             _ => { }
                         };
 
-                        main_flex.layout();
-
-                        current_mode = mode;
+                        main_group.layout();
+                        wnd.redraw();
                     },
                     Message::SetWcdmaInfo(wcdma_info) => {
                         wcdma_sc_label.set_value(&wcdma_info.psc.to_string());
@@ -618,7 +702,7 @@ fn main() {
                         ecio_plot.push_value(wcdma_info.ecio);
                     },
                     Message::SetLteInfo(lte_info) => {
-                        if current_pci != lte_info.pci {
+                        if current_pci.update_and_check_if_changed(lte_info.pci) {
                             if lte_info.pci == -1 {
                                 lte_pci_label.hide();
                             }
@@ -626,8 +710,7 @@ fn main() {
                                 lte_pci_label.show();
                                 lte_pci_label.set_value(&lte_info.pci.to_string());
                             }
-                            lte_flex.layout();
-                            current_pci = lte_info.pci;
+                            lte_group.layout();
                         }
     
                         lte_enb_cc_label.set_value(format!("{}/{}", lte_info.enb, lte_info.id).as_str());
@@ -639,7 +722,10 @@ fn main() {
                         rsrp_plot.push_value(lte_info.rsrp);
                         rsrq_plot.push_value(lte_info.rsrq);
                         sinr_plot.push_value(lte_info.sinr);
-                    }
+                    },
+                    Message::Quit => {
+                        app.quit();
+                    },
                 }
             }
         }

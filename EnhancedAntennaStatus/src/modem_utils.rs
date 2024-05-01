@@ -65,6 +65,9 @@ pub struct ModemStatus {
 
     pub device_temp: i64,
     pub battery_temp: i64,
+
+    pub dl: i64,
+    pub ul: i64,
 }
 
 impl ModemStatus {
@@ -196,7 +199,7 @@ pub struct NetgearParser { }
 
 impl NetgearParser {
     fn get_info_json(host: &str) -> Option<serde_json::Value> {
-        get_url_json(host, "/model.json")
+        get_url_json(host, "/model.json?internalapi=1")
     }
     
     fn parse_info_json(json: &serde_json::Value) -> ModemStatus {
@@ -274,12 +277,29 @@ impl NetgearParser {
         // Temperature
         let device_temp = json["general"]["devTemperature"].as_i64().unwrap();
         let battery_temp = json["power"]["batteryTemperature"].as_i64().unwrap();
-    
+
+        // Bandwidth
+        let dl =
+            if let Some(dl) = json["wwan"]["dataTransferredRx"].as_str() {
+                dl.parse::<i64>().unwrap() * 8
+            }
+            else {
+                0
+            };
+        let ul = 
+            if let Some(ul) = json["wwan"]["dataTransferredTx"].as_str() {
+                ul.parse::<i64>().unwrap() * 8
+            }
+            else {
+                0
+            };
+
         ModemStatus {
             mode, plmn, rssi, cell_id, signal_info, band,
             manufacturer, model,
             battery_percent, battery_status,
             device_temp, battery_temp,
+            dl, ul,
         }
     }    
 }
