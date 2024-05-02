@@ -19,7 +19,7 @@ Tested on:
   - [ ] Adjust poll timeout (longer timeouts to reduce load on the modem)
 - [ ] Create pre-filled list of host addresses: scan networks and get gateways
 - [ ] Additional info for Netgear from Telnet (channels and band widths) (need to resolve long timeout issues)
-- [ ] Download/upload bar plot
+- [x] Download/upload bar plot
 
 ## Links
 
