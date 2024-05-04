@@ -3,6 +3,7 @@ use std::time::SystemTime;
 pub const SIZE_KB: i64 = 1024;
 pub const SIZE_MB: i64 = 1024 * 1024;
 pub const SIZE_GB: i64 = 1024 * 1024 * 1024;
+pub const SIZE_TB: i64 = 1024 * 1024 * 1024 * 1024;
 
 pub fn format_bandwidth(bits_per_second: i64) -> String {
     const RATE_BPS: &str = "bit/s";

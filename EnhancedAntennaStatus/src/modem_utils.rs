@@ -1,8 +1,11 @@
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use http::Uri;
 // use serde_json::Value;
 // use ureq::get;
+
+use crate::utils::*;
+use crate::bandwidth_utils::*;
 
 #[macro_export]
 macro_rules! copy_string_to_array {
@@ -158,6 +161,11 @@ fn get_mode_by_description(s: &str) -> NetworkMode {
     }
 }
 
+/*
+ * HTTP utils
+ */
+const HTTP_TIMEOUT: Duration = Duration::from_millis(3_000);
+
 fn get_url_json(host: &str, query: &str) -> Option<serde_json::Value> {
     if let Ok(path) = Uri::builder()
         .scheme("http")
@@ -165,7 +173,11 @@ fn get_url_json(host: &str, query: &str) -> Option<serde_json::Value> {
         .path_and_query(query)
         .build() {
 
-        let req = ureq::get(&path.to_string());
+        let agent = ureq::AgentBuilder::new()
+            .timeout_connect(HTTP_TIMEOUT)
+            .build();
+
+        let req = agent.get(&path.to_string());
         match req.call() {
             Ok(response) => {
                 if let Ok(json) = response.into_json::<serde_json::Value>() {
@@ -231,11 +243,9 @@ impl NetgearParser {
     
                 let psc = json["wwanadv"]["primScode"].as_i64().unwrap();
     
-                let rnc = cell_id >> 16;
-                let id = cell_id & 0xFFFF;
+                let (rnc, id) = (cell_id >> 16, cell_id & 0xFFFF);
     
-                let nb = id / 10;
-                let cc = id % 10;
+                let (nb, cc) = (id / 10, id % 10);
     
                 SignalInfo::Wcdma(WcdmaSignalInfo {
                     rscp, ecio, nb, cc, rnc, psc
@@ -248,8 +258,7 @@ impl NetgearParser {
     
                 let pci = json["wwanadv"]["primScode"].as_i64().unwrap();
     
-                let enb = cell_id >> 8;
-                let id = cell_id & 0xFF;
+                let (enb, id) = (cell_id >> 8, cell_id & 0xFF);
     
                 SignalInfo::Lte(LteSignalInfo {
                     rsrq, rsrp, sinr, ca_count, enb, id, pci
@@ -279,18 +288,24 @@ impl NetgearParser {
         let battery_temp = json["power"]["batteryTemperature"].as_i64().unwrap();
 
         // Bandwidth
-        let dl =
-            if let Some(dl) = json["wwan"]["dataTransferredRx"].as_str() {
-                dl.parse::<i64>().unwrap() * 8
-            }
-            else {
+        let dl = 
+            if let Some(dl) = json_str_as_type::<i64>(&json["wwan"]["dataTransferredRx"]) {
+                if dl <= SIZE_TB {
+                    dl * 8
+                } else {
+                    0
+                }
+            } else {
                 0
             };
-        let ul = 
-            if let Some(ul) = json["wwan"]["dataTransferredTx"].as_str() {
-                ul.parse::<i64>().unwrap() * 8
-            }
-            else {
+        let ul =
+            if let Some(ul) = json_str_as_type::<i64>(&json["wwan"]["dataTransferredTx"]) {
+                if ul <= SIZE_TB {
+                    ul * 8
+                } else {
+                    0
+                }
+            } else {
                 0
             };
 
