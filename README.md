@@ -12,6 +12,10 @@ Supported manufacturers:
 Tested on:
 * Netgear: MR2100, AC785S
 
+## Video demo
+
+[![Demo of Enhanced Antenna Status utility](https://img.youtube.com/vi/M9-LlXhgATA/maxresdefault.jpg)](https://youtu.be/M9-LlXhgATA)
+
 ## TODO
 
 - UI enhancements
