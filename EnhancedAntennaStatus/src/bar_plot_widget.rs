@@ -24,7 +24,6 @@ const COLOR_TEXT: enums::Color = enums::Color::Gray0;
  */
 pub struct BarPlotWidget {
     inner: widget::Widget,
-    mouse_coord: Rc<RefCell<Option<(i32, i32)>>>,
     min: Rc<RefCell<i64>>,
     max: Rc<RefCell<i64>>,
     history: Rc<RefCell<VecDeque<(SystemTime, i64)>>>,
@@ -220,7 +219,6 @@ impl BarPlotWidget {
 
         Self {
             inner,
-            mouse_coord,
             min, max,
             history,
             unit,
@@ -256,7 +254,6 @@ pub const COLOR_DL_AND_UL: enums::Color = enums::Color::from_hex(0xDDCC77);
 
 pub struct DlUlBarPlotWidget {
     inner: widget::Widget,
-    mouse_coord: Rc<RefCell<Option<(i32, i32)>>>,
     history: Rc<RefCell<VecDeque<(SystemTime, i64, i64)>>>,
 }
 
@@ -455,7 +452,6 @@ impl DlUlBarPlotWidget {
         Self {
             inner,
             history,
-            mouse_coord,
         }
     }
     pub fn push_value(&mut self, dlul: (i64, i64)) {
