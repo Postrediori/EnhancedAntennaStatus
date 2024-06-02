@@ -366,6 +366,7 @@ impl MainWindow {
     
         let mut rscp_plot = BarPlotWidget::new();
         rscp_plot.set_range(-100, -70);
+        rscp_plot.set_unit("dBm");
     
         let ecio_label = {
             let mut row = group::Flex::default_fill()
@@ -385,6 +386,7 @@ impl MainWindow {
     
         let mut ecio_plot = BarPlotWidget::new();
         ecio_plot.set_range(-10, -2);
+        ecio_plot.set_unit("dB");
     
         wcdma_group.end();
     
@@ -440,6 +442,7 @@ impl MainWindow {
     
         let mut rsrq_plot = BarPlotWidget::new();
         rsrq_plot.set_range(-16, -3);
+        rsrq_plot.set_unit("dB");
     
         let rsrp_label = {
             let mut row = group::Flex::default_fill()
@@ -459,6 +462,7 @@ impl MainWindow {
     
         let mut rsrp_plot = BarPlotWidget::new();
         rsrp_plot.set_range(-130, -60);
+        rsrp_plot.set_unit("dBm");
     
         let sinr_label = {
             let mut row = group::Flex::default_fill()
@@ -478,6 +482,7 @@ impl MainWindow {
     
         let mut sinr_plot = BarPlotWidget::new();
         sinr_plot.set_range(0, 24);
+        sinr_plot.set_unit("dB");
         
         lte_group.end();
     
@@ -502,12 +507,14 @@ impl MainWindow {
             let mut dl_label = output::Output::default()
                 .with_label("Download:");
             set_param_label!(dl_label);
+            dl_label.set_text_color(COLOR_DL);
     
             add_flex_spacer!(row, 75);
     
             let mut ul_label = output::Output::default()
                 .with_label("Upload:");
             set_param_label!(ul_label);
+            ul_label.set_text_color(COLOR_UL.darker());
     
             row.end();
             bandwidth_group.fixed(&row, 20);
@@ -531,6 +538,7 @@ impl MainWindow {
         error_label.set_label_color(PARAM_COLOR);
         error_label.set_color(enums::Color::Background);
         error_label.set_frame(enums::FrameType::FlatBox);
+        error_label.set_label_font(enums::Font::HelveticaBold);
         error_label.set_align(enums::Align::Left | enums::Align::Inside);
 
         let close_button = button::Button::default()

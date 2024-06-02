@@ -1,5 +1,15 @@
 use std::str::FromStr;
 
+/// Copy String object to array of chars
+#[macro_export]
+macro_rules! copy_string_to_array {
+    ($array:tt, $string:expr) => {
+        let len = $string.len().min($array.len() - 1);
+        $array[..len].copy_from_slice(&$string.chars().collect::<Vec<char>>()[..len]);
+    }
+}
+pub use copy_string_to_array;
+
 /// Flag wrapper that monitors change of the flag
 pub struct ValueChangeObserver<T: PartialEq+Copy> {
     val: Option<T>,

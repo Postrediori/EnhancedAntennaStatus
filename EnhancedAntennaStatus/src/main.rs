@@ -1,10 +1,12 @@
 mod bandwidth_utils;
 use bandwidth_utils::*;
 
+
 mod modem_utils;
 use modem_utils::*;
 
 mod utils;
+mod network_utils;
 
 mod res;
 mod bar_plot_widget;
@@ -15,8 +17,6 @@ use main_window::*;
 use fltk::{*, prelude::*};
 use std::thread;
 use std::time::{Duration, SystemTime};
-
-// const POLLER_TIMEOUT: u64 = 2_000;
 
 #[derive(Clone, Copy)]
 enum Message {

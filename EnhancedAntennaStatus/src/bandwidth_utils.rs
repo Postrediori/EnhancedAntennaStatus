@@ -47,6 +47,7 @@ pub fn nearest_fib(x: i64) -> i64 {
 pub struct BandwidthCounter {
     dlul_time: SystemTime,
     total_bytes: (i64, i64),
+    initial_set: bool,
 }
 
 impl BandwidthCounter {
@@ -58,6 +59,7 @@ impl BandwidthCounter {
         Self {
             dlul_time,
             total_bytes,
+            initial_set: true,
         }
     }
 
@@ -80,7 +82,13 @@ impl BandwidthCounter {
             self.dlul_time = current_time;
             self.total_bytes = new_total_bytes;
 
-            Some((dl, ul))
+            if self.initial_set {
+                self.initial_set = false;
+                None
+            }
+            else {
+                Some((dl, ul))
+            }
         }
         else {
             None

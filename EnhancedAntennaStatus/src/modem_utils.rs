@@ -1,19 +1,8 @@
-use std::{fmt, time::Duration};
-
-use http::Uri;
-// use serde_json::Value;
-// use ureq::get;
+use std::fmt;
 
 use crate::utils::*;
 use crate::bandwidth_utils::*;
-
-#[macro_export]
-macro_rules! copy_string_to_array {
-    ($array:tt, $string:expr) => {
-        let len = $string.len().min($array.len() - 1);
-        $array[..len].copy_from_slice(&$string.chars().collect::<Vec<char>>()[..len]);
-    }
-}
+use crate::network_utils::get_url_json;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum NetworkMode {
@@ -159,40 +148,6 @@ fn get_mode_by_description(s: &str) -> NetworkMode {
         "LteService" => NetworkMode::Lte,
         _ => NetworkMode::Unknown,
     }
-}
-
-/*
- * HTTP utils
- */
-const HTTP_TIMEOUT: Duration = Duration::from_millis(3_000);
-
-fn get_url_json(host: &str, query: &str) -> Option<serde_json::Value> {
-    if let Ok(path) = Uri::builder()
-        .scheme("http")
-        .authority(host)
-        .path_and_query(query)
-        .build() {
-
-        let agent = ureq::AgentBuilder::new()
-            .timeout_connect(HTTP_TIMEOUT)
-            .build();
-
-        let req = agent.get(&path.to_string());
-        match req.call() {
-            Ok(response) => {
-                if let Ok(json) = response.into_json::<serde_json::Value>() {
-                    return Some(json);
-                }
-            }
-            Err(ureq::Error::Status(code, response)) => {
-                eprintln!("HTTP error code={} response={}", code, response.status_text());
-            }
-            Err(e) => {
-                eprintln!("HTTP error={}", &e.to_string());
-            }
-        }
-    }
-    return None;
 }
 
 /*
