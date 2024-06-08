@@ -57,9 +57,13 @@ macro_rules! add_flex_spacer {
 pub struct MainWindow {
     current_pci: ValueChangeObserver::<i64>,
     current_mode: ValueChangeObserver::<NetworkMode>,
+    current_has_battery: ValueChangeObserver<bool>,
+    current_has_device_temp: ValueChangeObserver<bool>,
+    current_has_model: ValueChangeObserver<bool>,
     pub wnd: window::Window,
     main_group: group::Flex,
-    pub host_input: input::Input,
+    pub model_choice: menu::Choice,
+    pub host_input: misc::InputChoice,
     pub connect_button: button::Button,
     timeout_choice: menu::Choice,
     pub close_button: button::Button,
@@ -101,6 +105,9 @@ impl MainWindow {
     pub fn new(width: i32, height: i32) -> Self {
         let current_pci = ValueChangeObserver::<i64>::new();
         let current_mode = ValueChangeObserver::<NetworkMode>::new();
+        let current_has_battery = ValueChangeObserver::<bool>::new();
+        let current_has_device_temp = ValueChangeObserver::<bool>::new();
+        let current_has_model = ValueChangeObserver::<bool>::new();
 
         let mut wnd = window::Window::default()
             .with_size(width, height)
@@ -111,20 +118,23 @@ impl MainWindow {
         main_group.set_margin(10);
         main_group.set_spacing(5);
     
-        let (mut host_input, connect_button, timeout_choice) = {
+        let (model_choice, mut host_input, connect_button, timeout_choice) = {
             let mut row = group::Flex::default_fill()
                 .row();
     
+            add_flex_spacer!(row, 95);
+
+            let model_choice = menu::Choice::default()
+                .with_label("Manufacturer:");
+    
+            row.fixed(&model_choice, 115);
+
             add_flex_spacer!(row, 115);
-    
-            let host_input = input::Input::default()
+            
+            let host_input = misc::InputChoice::default()
                 .with_label("Modem Address:");
-        
-            let connect_button = button::Button::default()
-                .with_label("Start Poll");
-            row.fixed(&connect_button, 75);
     
-            add_flex_spacer!(row, 105);
+            add_flex_spacer!(row, 95);
 
             let mut timeout_choice = menu::Choice::default()
                 .with_label("Poll timeout:");
@@ -135,10 +145,14 @@ impl MainWindow {
             }
             timeout_choice.set_value(1);
     
+            let connect_button = button::Button::default()
+                .with_label("Start Poll");
+            row.fixed(&connect_button, 75);
+
             row.end();
             main_group.fixed(&row, 25);
     
-            (host_input, connect_button, timeout_choice)
+            (model_choice, host_input, connect_button, timeout_choice)
         };
     
         let info_group_container = group::Flex::default_fill()
@@ -299,7 +313,7 @@ impl MainWindow {
     
             (device_temp_label, battery_temp_label)
         };
-    
+
         info_group.end();
     
         info_group_container.end();
@@ -566,16 +580,16 @@ impl MainWindow {
         /*
          * Initial state of UI
          */
-        host_input.set_value("192.168.1.1");
+        let _result = host_input.take_focus();
 
         wcdma_group.hide();
         lte_group.hide();
 
         Self {
-            current_pci, current_mode,
+            current_pci, current_mode, current_has_battery, current_has_device_temp, current_has_model,
             wnd,
             main_group,
-            host_input,
+            model_choice, host_input,
             connect_button, timeout_choice, close_button,
             network_mode_label, rssi_label,
             plmn_label, band_label, cellid_label,
@@ -597,7 +611,14 @@ impl MainWindow {
 
         self.plmn_label.set_value(&info.get_plmn());
 
-        self.band_label.set_value(&info.get_band());
+        let band = info.get_band();
+        if !band.is_empty() {
+            self.band_label.show();
+            self.band_label.set_value(&info.get_band());
+        }
+        else {
+            self.band_label.hide();
+        }
 
         let (cell_id_hex, cell_id) = info.get_cell_id_hex_and_dec();
         self.cellid_label.set_value(format!("{cell_id_hex}/{cell_id}").as_str());
@@ -613,20 +634,55 @@ impl MainWindow {
         }
 
         // Modem model
-        let (manufacturer, model) = info.get_manufacturer_and_model();
+        let (manufacturer, model) = info.device_info.get_manufacturer_and_model();
+        if self.current_has_model.update_and_check_if_changed(model.is_empty()) {
+            if !model.is_empty() {
+                self.model_label.show();
+            }
+            else {
+                self.model_label.hide();
+            }
+        }
+        
         self.manufacturer_label.set_value(&manufacturer);
-        self.model_label.set_value(&model);
+        if !model.is_empty() {
+            self.model_label.set_value(&model);
+        }
 
         // Battery info
-        let (battery_percent, battery_status) = info.get_battery_percent_and_status();
-        
-        let battery_percent = format!("{}%", battery_percent);
-        self.battery_percent_label.set_value(&battery_percent);
-        self.battery_status_label.set_value(&battery_status);
+        let battery_status = info.get_battery_percent_and_status();
+        if self.current_has_battery.update_and_check_if_changed(battery_status.is_some()) {
+            if battery_status.is_some() {
+                self.battery_percent_label.show();
+                self.battery_status_label.show();
+            }
+            else {
+                self.battery_percent_label.hide();
+                self.battery_status_label.hide();
+            }
+        }
+        if let Some((battery_percent, battery_status)) = battery_status {
+            let battery_percent = format!("{}%", battery_percent);
+            self.battery_percent_label.set_value(&battery_percent);
+            self.battery_status_label.set_value(&battery_status);
+        }
         
         // Temperature
-        self.device_temp_label.set_value(format!("{}°C", info.device_temp).as_str());
-        self.battery_temp_label.set_value(format!("{}°C", info.battery_temp).as_str());
+        let device_temp = info.device_temp;
+        if self.current_has_device_temp.update_and_check_if_changed(device_temp.is_some()) {
+            if device_temp.is_some() {
+                self.device_temp_label.show();
+                self.battery_temp_label.show();
+            }
+            else {
+                self.device_temp_label.hide();
+                self.battery_temp_label.hide();
+            }
+        }
+        if let Some(device_temp) = device_temp {
+            self.device_temp_label.set_value(format!("{}°C", device_temp.device_temp).as_str());
+            self.battery_temp_label.set_value(format!("{}°C", device_temp.battery_temp).as_str());
+        }
 
         self.wnd.redraw();
     }
@@ -707,9 +763,9 @@ impl MainWindow {
         self.rsrq_plot.push_value(lte_info.rsrq);
         self.sinr_plot.push_value(lte_info.sinr);
     }
-    pub fn set_bandwidth_data(&mut self, dlul: (i64, i64)) {
-        let dl_str = format_bandwidth(dlul.0);
-        let ul_str = format_bandwidth(dlul.1);
+    pub fn set_bandwidth_data(&mut self, dlul: TrafficStatistics) {
+        let dl_str = format_bandwidth(dlul.dl);
+        let ul_str = format_bandwidth(dlul.ul);
 
         self.dl_label.set_value(&dl_str);
         self.ul_label.set_value(&ul_str);
@@ -717,17 +773,22 @@ impl MainWindow {
         self.dlul_plot.push_value(dlul);
     }
     pub fn start_poll(&mut self) {
+        self.model_choice.deactivate();
         self.host_input.deactivate();
         self.connect_button.set_label("Stop Poll");
         self.timeout_choice.deactivate();
     }
     pub fn stop_poll(&mut self) {
+        self.model_choice.activate();
         self.host_input.activate();
         self.connect_button.set_label("Start Poll");
         self.timeout_choice.activate();
     }
-    pub fn set_error(&mut self, s: &str) {
-        self.error_label.set_label(s);
+    pub fn set_error(&mut self, s: Option<&str>) {
+        match s {
+        Some(s) => self.error_label.set_label(s),
+        None => self.error_label.set_label(""),
+        }
     }
     pub fn get_poll_timeout(&self) -> u64 {
         let i = self.timeout_choice.value() as usize;

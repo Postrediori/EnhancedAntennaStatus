@@ -1,12 +1,17 @@
+mod utils;
+mod network_utils;
+
 mod bandwidth_utils;
 use bandwidth_utils::*;
-
 
 mod modem_utils;
 use modem_utils::*;
 
-mod utils;
-mod network_utils;
+mod netgear_parser;
+use netgear_parser::*;
+
+mod huawei_parser;
+use huawei_parser::*;
 
 mod res;
 mod bar_plot_widget;
@@ -23,9 +28,15 @@ enum Message {
     GetInfo,
     StartStopPolling,
     ReceivedInfo(ModemStatus),
-    InfoError(i32),
+    InfoOk,
+    InfoError(ModemError),
     Quit,
 }
+
+const MANUFACTURERS: [&str; 2] = [
+    "Netgear",
+    "Huawei",
+];
 
 fn main() {
     let app = app::App::default();
@@ -40,7 +51,15 @@ fn main() {
     /*
      * Initial state of UI
      */
+    for m in MANUFACTURERS {
+        wnd.model_choice.add_choice(m);
+    }
+    wnd.model_choice.set_value(0);
+
+    wnd.host_input.add("192.168.8.1");
+    wnd.host_input.add("192.168.1.1");
     wnd.host_input.set_value("192.168.1.1");
+
     wnd.connect_button.emit(tx, Message::StartStopPolling);
     wnd.close_button.emit(tx, Message::Quit);
 
@@ -51,7 +70,8 @@ fn main() {
      */
     let mut poller_timeout = Duration::from_secs(2);
     let mut run_poller = false;
-    let mut host_address = "".to_string();
+    let mut host_address = String::new();
+    let mut manufacturer_id: i32 = 0;
 
     let mut jh_getinfo: Option<std::thread::JoinHandle<()>> = None;
 
@@ -68,7 +88,9 @@ fn main() {
                         run_poller = !run_poller;
 
                         if run_poller {
-                            host_address = wnd.host_input.value();
+                            manufacturer_id = wnd.model_choice.value();
+
+                            host_address = wnd.host_input.input().value();
 
                             let timeout = wnd.get_poll_timeout();
                             poller_timeout = Duration::from_secs(timeout);
@@ -88,17 +110,29 @@ fn main() {
                     },
                     Message::GetInfo => {
                         let host_address = host_address.clone();
-                        println!("Connecting to host {}", host_address);
+                        println!("Connecting to modem {} host {}",
+                            MANUFACTURERS[manufacturer_id as usize], host_address);
                         
                         jh_getinfo = Some(thread::spawn(
                             move || {
-                                if let Some(modem_info) = NetgearParser::get_info(host_address.as_str()) {
+                                let modem_info = match manufacturer_id {
+                                0 => NetgearParser::get_info(host_address.as_str()),
+                                1 => HuaweiParser::get_info(host_address.as_str()),
+                                _ => {
+                                    eprintln!("Error: Unknown modem manufacturer ID");
+                                    Err(ModemError::Unknown)
+                                },
+                                };
+
+                                match modem_info {
+                                Ok(modem_info) => {
                                     tx.send(Message::ReceivedInfo(modem_info));
-                                    tx.send(Message::InfoError(0));
+                                    tx.send(Message::InfoOk);
+                                },
+                                Err(e) => {
+                                    tx.send(Message::InfoError(e));
                                 }
-                                else {
-                                    tx.send(Message::InfoError(-1));
-                                }
+                                };
                                 
                                 let start_time = SystemTime::now();
 
@@ -145,24 +179,43 @@ fn main() {
 
                         wnd.set_info(info);
 
-                        // Bandwidth
-                        if let Some(dlul) = dlul.update_with_total_values((info.dl, info.ul)) {
-                            let dl_str = format_bandwidth(dlul.0);
-                            let ul_str = format_bandwidth(dlul.1);
+                        if let Some(traffic_statistics) = info.traffic_statistics {
+                            // Bandwidth
+                            match info.traffic_mode {
+                            TrafficMode::Absolute => {
+                                let dl_str = format_bandwidth(traffic_statistics.dl);
+                                let ul_str = format_bandwidth(traffic_statistics.ul);
 
-                            println!("Download : {dl_str} Upload : {ul_str}\n");
+                                println!("Download : {dl_str} Upload : {ul_str}\n");
 
-                            wnd.set_bandwidth_data(dlul);
+                                wnd.set_bandwidth_data(traffic_statistics);
+                            },
+                            TrafficMode::Cumulative => {
+                                if let Some(dlul) = dlul.update_with_total_values(traffic_statistics) {
+                                    let dl_str = format_bandwidth(dlul.dl);
+                                    let ul_str = format_bandwidth(dlul.ul);
+
+                                    println!("Download : {dl_str} Upload : {ul_str}\n");
+
+                                    wnd.set_bandwidth_data(dlul);
+                                }
+                            }
+                            };
+                        }
+                    },
+                    Message::InfoOk => {
+                        wnd.set_error(None);
+                    },
+                    Message::InfoError(e) => {
+                        match e {
+                        ModemError::HttpConnection => wnd.set_error(Some("HTTP Error")),
+                        ModemError::Access => wnd.set_error(Some("Access Error")),
+                        ModemError::DataParsing => wnd.set_error(Some("Data Parsing Error")),
+                        ModemError::Unknown => wnd.set_error(Some("Unknown error")),
                         }
                     },
                     Message::Quit => {
                         app.quit();
-                    },
-                    Message::InfoError(i) => {
-                        match i {
-                            -1 => wnd.set_error("HTTP Error"),
-                            _ => wnd.set_error(""),
-                        }
                     }
                 }
             }

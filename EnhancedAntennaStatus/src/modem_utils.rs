@@ -2,7 +2,6 @@ use std::fmt;
 
 use crate::utils::*;
 use crate::bandwidth_utils::*;
-use crate::network_utils::get_url_json;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum NetworkMode {
@@ -41,25 +40,85 @@ pub enum SignalInfo {
 }
 
 #[derive(Copy, Clone)]
+pub struct PlmnStatus {
+    pub plmn: [char; 6],
+}
+
+impl PlmnStatus {
+    pub fn from_string(plmn_str: &str) -> Self {
+        let mut plmn = ['\0'; 6];
+        copy_string_to_array!(plmn, plmn_str);
+        Self {
+            plmn,
+        }
+    }
+    pub fn to_string(&self) -> String {
+        String::from_iter(self.plmn.iter())
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct BatteryStatus {
+    pub percent: i64,
+    pub status: [char; 20],
+}
+
+impl BatteryStatus {
+    fn get_battery_percent_and_status(&self) -> (i64, String) {
+        (
+            self.percent,
+            String::from_iter(self.status.iter()).trim_matches(char::from(0)).to_string()
+        )
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct DeviceTemperature {
+    pub device_temp: i64,
+    pub battery_temp: i64,
+}
+
+#[derive(Copy, Clone)]
+pub struct DeviceInformation {
+    pub manufacturer: [char; 40],
+    pub model: [char; 40],
+}
+
+impl DeviceInformation {
+    pub fn from(manufacturer_str: &str, model_str: &str) -> Self {
+        let mut manufacturer = ['\0'; 40];
+        copy_string_to_array!(manufacturer, manufacturer_str);
+
+        let mut model = ['\0'; 40];
+        copy_string_to_array!(model, model_str);
+
+        Self {
+            manufacturer,
+            model,
+        }
+    }
+    pub fn get_manufacturer_and_model(&self) -> (String, String) {
+        (
+            String::from_iter(self.manufacturer.iter()).trim_matches(char::from(0)).to_string(),
+            String::from_iter(self.model.iter()).trim_matches(char::from(0)).to_string()
+        )
+    }
+}
+
+#[derive(Copy, Clone)]
 pub struct ModemStatus {
     pub mode: NetworkMode,
-    pub plmn: [char; 6],
+    pub plmn: PlmnStatus,
     pub rssi: i64,
     pub cell_id: i64,
     pub signal_info: SignalInfo,
     pub band: [char; 20],
 
-    pub manufacturer: [char; 40],
-    pub model: [char; 40],
-
-    pub battery_percent: i64,
-    pub battery_status: [char; 20],
-
-    pub device_temp: i64,
-    pub battery_temp: i64,
-
-    pub dl: i64,
-    pub ul: i64,
+    pub device_info: DeviceInformation,
+    pub battery_status: Option<BatteryStatus>,
+    pub device_temp: Option<DeviceTemperature>,
+    pub traffic_statistics: Option<TrafficStatistics>,
+    pub traffic_mode: TrafficMode,
 }
 
 impl ModemStatus {
@@ -81,7 +140,7 @@ impl ModemStatus {
         }
     }
     pub fn get_plmn(&self) -> String {
-        String::from_iter(self.plmn.iter())
+        self.plmn.to_string()
     }
     pub fn get_band(&self) -> String {
         let ca_count = self.get_ca_count();
@@ -96,17 +155,13 @@ impl ModemStatus {
         let cell_id_hex = format!("{:X}", self.cell_id);
         (cell_id_hex, cell_id)
     }
-    pub fn get_manufacturer_and_model(&self) -> (String, String) {
-        (
-            String::from_iter(self.manufacturer.iter()).trim_matches(char::from(0)).to_string(),
-            String::from_iter(self.model.iter()).trim_matches(char::from(0)).to_string()
-        )
-    }
-    pub fn get_battery_percent_and_status(&self) -> (i64, String) {
-        (
-            self.battery_percent,
-            String::from_iter(self.battery_status.iter()).trim_matches(char::from(0)).to_string()
-        )
+    pub fn get_battery_percent_and_status(&self) -> Option<(i64, String)> {
+        if let Some(battery_status) = self.battery_status {
+            Some(battery_status.get_battery_percent_and_status())
+        }
+        else {
+            None
+        }
     }
 }
 
@@ -141,13 +196,17 @@ impl fmt::Display for ModemStatus {
     }
 }
 
-fn get_mode_by_description(s: &str) -> NetworkMode {
-    match s {
-        "GsmService" => NetworkMode::Gsm,
-        "WcdmaService" => NetworkMode::Wcdma,
-        "LteService" => NetworkMode::Lte,
-        _ => NetworkMode::Unknown,
-    }
+/// Modem Error
+#[derive(Clone, Copy, Debug)]
+pub enum ModemError {
+    /// Low-level HTTP connection error
+    HttpConnection,
+    /// Resource access error
+    Access,
+    /// Parsing of data error
+    DataParsing,
+    /// All other errors
+    Unknown,
 }
 
 /*
@@ -155,132 +214,5 @@ fn get_mode_by_description(s: &str) -> NetworkMode {
  */
 
 pub trait ModemInfoParser {
-    fn get_info(host: &str) -> Option<ModemStatus>;
-}
-
-/*
- * Utils for Netgear 
- */
-
-pub struct NetgearParser { }
-
-impl NetgearParser {
-    fn get_info_json(host: &str) -> Option<serde_json::Value> {
-        get_url_json(host, "/model.json?internalapi=1")
-    }
-    
-    fn parse_info_json(json: &serde_json::Value) -> ModemStatus {
-        let ca_count = match json["wwan"]["ca"]["SCCcount"].as_i64() {
-            Some(i) => {i},
-            None => {0},
-        };
-    
-        let mode = get_mode_by_description(json["wwan"]["currentNWserviceType"].as_str().unwrap());
-    
-        let rssi = json["wwan"]["signalStrength"]["rssi"].as_i64().unwrap();
-    
-        let plmn_str = format!("{}{}",
-            json["wwanadv"]["MCC"].as_str().unwrap(),
-            json["wwanadv"]["MNC"].as_str().unwrap());
-        let mut plmn = ['\0'; 6];
-        copy_string_to_array!(plmn, plmn_str);
-    
-        let band_str = json["wwanadv"]["curBand"].as_str().unwrap().to_string();
-        let mut band = ['\0'; 20];
-        copy_string_to_array!(band, band_str);
-    
-        let cell_id = json["wwanadv"]["cellId"].as_i64().unwrap();
-    
-        let signal_info: SignalInfo = match mode {
-            NetworkMode::Wcdma => {
-                let rscp = json["wwan"]["signalStrength"]["rscp"].as_i64().unwrap();
-                let ecio = json["wwan"]["signalStrength"]["ecio"].as_i64().unwrap();
-    
-                let psc = json["wwanadv"]["primScode"].as_i64().unwrap();
-    
-                let (rnc, id) = (cell_id >> 16, cell_id & 0xFFFF);
-    
-                let (nb, cc) = (id / 10, id % 10);
-    
-                SignalInfo::Wcdma(WcdmaSignalInfo {
-                    rscp, ecio, nb, cc, rnc, psc
-                })
-            },
-            NetworkMode::Lte => {
-                let rsrq = json["wwan"]["signalStrength"]["rsrq"].as_i64().unwrap();
-                let rsrp = json["wwan"]["signalStrength"]["rsrp"].as_i64().unwrap();
-                let sinr = json["wwan"]["signalStrength"]["sinr"].as_i64().unwrap();
-    
-                let pci = json["wwanadv"]["primScode"].as_i64().unwrap();
-    
-                let (enb, id) = (cell_id >> 8, cell_id & 0xFF);
-    
-                SignalInfo::Lte(LteSignalInfo {
-                    rsrq, rsrp, sinr, ca_count, enb, id, pci
-                })
-            },
-            _=> { SignalInfo::None }
-        };
-
-        // Modem model
-        let manufacturer_str = json["general"]["companyName"].as_str().unwrap().to_string();
-        let mut manufacturer = ['\0'; 40];
-        copy_string_to_array!(manufacturer, manufacturer_str);
-
-        let model_str = json["general"]["deviceName"].as_str().unwrap().to_string();
-        let mut model = ['\0'; 40];
-        copy_string_to_array!(model, model_str);
-
-        // Battery info
-        let battery_percent = json["power"]["battChargeLevel"].as_i64().unwrap();
-
-        let battery_status_str = json["power"]["battChargeSource"].as_str().unwrap().to_string();
-        let mut battery_status = ['\0'; 20];
-        copy_string_to_array!(battery_status, battery_status_str);
-
-        // Temperature
-        let device_temp = json["general"]["devTemperature"].as_i64().unwrap();
-        let battery_temp = json["power"]["batteryTemperature"].as_i64().unwrap();
-
-        // Bandwidth
-        let dl = 
-            if let Some(dl) = json_str_as_type::<i64>(&json["wwan"]["dataTransferredRx"]) {
-                if dl <= SIZE_TB {
-                    dl * 8
-                } else {
-                    0
-                }
-            } else {
-                0
-            };
-        let ul =
-            if let Some(ul) = json_str_as_type::<i64>(&json["wwan"]["dataTransferredTx"]) {
-                if ul <= SIZE_TB {
-                    ul * 8
-                } else {
-                    0
-                }
-            } else {
-                0
-            };
-
-        ModemStatus {
-            mode, plmn, rssi, cell_id, signal_info, band,
-            manufacturer, model,
-            battery_percent, battery_status,
-            device_temp, battery_temp,
-            dl, ul,
-        }
-    }    
-}
-
-impl ModemInfoParser for NetgearParser {
-    fn get_info(host: &str) -> Option<ModemStatus> {
-        if let Some(json) = NetgearParser::get_info_json(host) {
-            let modem_info = NetgearParser::parse_info_json(&json);
-
-            return Some(modem_info);
-        }
-        return None;
-    }
+    fn get_info(host: &str) -> Result<ModemStatus, ModemError>;
 }

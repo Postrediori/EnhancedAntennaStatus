@@ -5,6 +5,18 @@ pub const SIZE_MB: i64 = 1024 * 1024;
 pub const SIZE_GB: i64 = 1024 * 1024 * 1024;
 pub const SIZE_TB: i64 = 1024 * 1024 * 1024 * 1024;
 
+#[derive(Copy, Clone)]
+pub enum TrafficMode {
+    Absolute,
+    Cumulative,
+}
+
+#[derive(Copy, Clone)]
+pub struct TrafficStatistics {
+    pub dl: i64,
+    pub ul: i64,
+}
+
 pub fn format_bandwidth(bits_per_second: i64) -> String {
     const RATE_BPS: &str = "bit/s";
     const RATE_KBPS: &str = "KBit/s";
@@ -46,7 +58,7 @@ pub fn nearest_fib(x: i64) -> i64 {
  */
 pub struct BandwidthCounter {
     dlul_time: SystemTime,
-    total_bytes: (i64, i64),
+    total_bytes: TrafficStatistics,
     initial_set: bool,
 }
 
@@ -54,7 +66,7 @@ impl BandwidthCounter {
     pub fn new() -> Self {
         let dlul_time = SystemTime::now();
 
-        let total_bytes = (0, 0);
+        let total_bytes = TrafficStatistics { dl: 0, ul: 0 };
 
         Self {
             dlul_time,
@@ -64,17 +76,17 @@ impl BandwidthCounter {
     }
 
     // Update with total values
-    pub fn update_with_total_values(&mut self, new_total_bytes: (i64, i64)) -> Option<(i64, i64)> {
+    pub fn update_with_total_values(&mut self, new_total_bytes: TrafficStatistics) -> Option<TrafficStatistics> {
         let current_time = SystemTime::now();
         if let Ok(dt) = current_time.duration_since(self.dlul_time) {
             let t = 1000.0 / dt.as_millis() as f64;
-            let dl = if self.total_bytes.0 > 0 {
-                ((new_total_bytes.0 - self.total_bytes.0) as f64 * t) as i64
+            let dl = if self.total_bytes.dl > 0 {
+                ((new_total_bytes.dl - self.total_bytes.dl) as f64 * t) as i64
             } else {
                 0
             };
-            let ul = if self.total_bytes.1 > 0 {
-                ((new_total_bytes.1 - self.total_bytes.1) as f64 * t) as i64
+            let ul = if self.total_bytes.ul > 0 {
+                ((new_total_bytes.ul - self.total_bytes.ul) as f64 * t) as i64
             } else {
                 0
             };
@@ -87,7 +99,7 @@ impl BandwidthCounter {
                 None
             }
             else {
-                Some((dl, ul))
+                Some(TrafficStatistics{ dl, ul })
             }
         }
         else {

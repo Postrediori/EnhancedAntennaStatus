@@ -254,7 +254,7 @@ pub const COLOR_DL_AND_UL: enums::Color = enums::Color::from_hex(0xDDCC77);
 
 pub struct DlUlBarPlotWidget {
     inner: widget::Widget,
-    history: Rc<RefCell<VecDeque<(SystemTime, i64, i64)>>>,
+    history: Rc<RefCell<VecDeque<(SystemTime, TrafficStatistics)>>>,
 }
 
 impl DlUlBarPlotWidget {
@@ -264,7 +264,7 @@ impl DlUlBarPlotWidget {
         let mouse_coord: Option<(i32, i32)> = None;
         let mouse_coord = Rc::from(RefCell::from(mouse_coord));
 
-        let history = VecDeque::<(SystemTime, i64, i64)>::with_capacity(HISTORY_SIZE+1);
+        let history = VecDeque::<(SystemTime, TrafficStatistics)>::with_capacity(HISTORY_SIZE+1);
         let history = Rc::from(RefCell::from(history));
 
         inner.draw({
@@ -318,22 +318,24 @@ impl DlUlBarPlotWidget {
                             draw::Coord::<i32>(x1, y2));
                     }
 
-                    let max_dlul: (_, i64, i64) = h.into_iter().reduce( |accum, current| {
-                            (UNIX_EPOCH, accum.1.max(current.1), accum.2.max(current.2))
+                    let max_dlul: (_, TrafficStatistics) = h.into_iter().reduce( |accum, current| {
+                            (UNIX_EPOCH, TrafficStatistics {
+                                dl: accum.1.dl.max(current.1.dl), ul: accum.1.ul.max(current.1.ul)
+                            })
                         }).unwrap();
-                    let max_dlul = max_dlul.1.max(max_dlul.2);
+                    let max_dlul = max_dlul.1.dl.max(max_dlul.1.ul);
 
                     let max_plot = nearest_fib(max_dlul / SIZE_MB);
                     let max_mb = max_plot * SIZE_MB;
                     
                     for k in 0..history.len() {
-                        let (_, dl, ul) = history[k];
+                        let (_, dlul) = history[k];
 
-                        let ydl = (dl as f64) / (max_mb as f64);
-                        let yul = (ul as f64) / (max_mb as f64);
+                        let ydl = (dlul.dl as f64) / (max_mb as f64);
+                        let yul = (dlul.ul as f64) / (max_mb as f64);
 
                         let (y1, y2, color1, color2) = {
-                            if ul < dl {
+                            if dlul.ul < dlul.dl {
                                 (yul, ydl, COLOR_DL_AND_UL, COLOR_DL)
                             }
                             else {
@@ -366,18 +368,18 @@ impl DlUlBarPlotWidget {
                     let str = format!("{max_plot} MBit/s");
                     draw::set_draw_color(COLOR_TEXT);
                     draw::set_font(enums::Font::HelveticaBold, 16);
-                    draw::draw_text2(&str, i.x() + i.w(), i.y(),
+                    draw::draw_text2(&str, i.x() + i.w() - MARGIN_X, i.y() + MARGIN_Y,
                         0, 0, enums::Align::TopRight);
 
                     if let Some(k) = k {
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
                         let x2 = (i.x() as f64 + dx * ((k + 1) as f64)) as i32 + MARGIN_X;
                         
-                        let (t, dl, ul) = history[k];
+                        let (t, dlul) = history[k];
                         let dt: DateTime<Local> = t.into();
     
-                        let dl_str = format!("DL: {}", format_bandwidth(dl));
-                        let ul_str = format!("UL: {}", format_bandwidth(ul));
+                        let dl_str = format!("DL: {}", format_bandwidth(dlul.dl));
+                        let ul_str = format!("UL: {}", format_bandwidth(dlul.ul));
                         let time_str = format!("{}", dt.format("%T"));
     
                         draw::set_font(enums::Font::Helvetica, 14);
@@ -454,11 +456,11 @@ impl DlUlBarPlotWidget {
             history,
         }
     }
-    pub fn push_value(&mut self, dlul: (i64, i64)) {
+    pub fn push_value(&mut self, dlul: TrafficStatistics) {
         if self.history.borrow().len() == HISTORY_SIZE {
             self.history.borrow_mut().pop_front();
         }
-        self.history.borrow_mut().push_back((SystemTime::now(), dlul.0, dlul.1));
+        self.history.borrow_mut().push_back((SystemTime::now(), dlul));
     }
     pub fn clear_history(&mut self) {
         self.history.borrow_mut().clear();
