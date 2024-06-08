@@ -12,11 +12,17 @@ Checking history of download/upload bandwidth and signal params:
 
 ![Checking signal status](images/ac785s-3.png)
 
+Information about Huawei modem:
+
+![Checking status of Huawei modem](images/e5573.png)
+
 Supported manufacturers:
 * Netgear
+* Huawei
 
 Tested on:
 * Netgear: MR2100, AC785S
+* Huawei: E8372h-608, E5573s-320
 
 ## Video demo
 
