@@ -89,8 +89,6 @@ impl BarPlotWidget {
                     };
 
                     if let Some(k) = k {
-                        draw::set_line_style(draw::LineStyle::DashDot, 1);
-
                         let y1 = i.y() + MARGIN_Y;
                         let y2 = i.y() + i.h() - MARGIN_Y;
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
@@ -303,8 +301,6 @@ impl DlUlBarPlotWidget {
                     };
 
                     if let Some(k) = k {
-                        draw::set_line_style(draw::LineStyle::DashDot, 1);
-
                         let y1 = i.y() + MARGIN_Y;
                         let y2 = i.y() + i.h() - MARGIN_Y;
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
