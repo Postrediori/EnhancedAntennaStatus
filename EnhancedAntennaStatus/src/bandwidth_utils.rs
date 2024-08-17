@@ -25,15 +25,24 @@ pub fn format_bandwidth(bits_per_second: i64) -> String {
 
     if bits_per_second < SIZE_KB {
         format!("{bits_per_second}{RATE_BPS}").to_string()
-    }
-    else if bits_per_second < SIZE_MB {
-        format!("{:.2}{RATE_KBPS}", (bits_per_second as f64) / (SIZE_KB as f64)).to_string()
-    }
-    else if bits_per_second < SIZE_GB {
-        format!("{:.2}{RATE_MBPS}", (bits_per_second as f64) / (SIZE_MB as f64)).to_string()
-    }
-    else {
-        format!("{:.2}{RATE_GBPS}", (bits_per_second as f64) / (SIZE_GB as f64)).to_string()
+    } else if bits_per_second < SIZE_MB {
+        format!(
+            "{:.2}{RATE_KBPS}",
+            (bits_per_second as f64) / (SIZE_KB as f64)
+        )
+        .to_string()
+    } else if bits_per_second < SIZE_GB {
+        format!(
+            "{:.2}{RATE_MBPS}",
+            (bits_per_second as f64) / (SIZE_MB as f64)
+        )
+        .to_string()
+    } else {
+        format!(
+            "{:.2}{RATE_GBPS}",
+            (bits_per_second as f64) / (SIZE_GB as f64)
+        )
+        .to_string()
     }
 }
 
@@ -76,7 +85,10 @@ impl BandwidthCounter {
     }
 
     // Update with total values
-    pub fn update_with_total_values(&mut self, new_total_bytes: TrafficStatistics) -> Option<TrafficStatistics> {
+    pub fn update_with_total_values(
+        &mut self,
+        new_total_bytes: TrafficStatistics,
+    ) -> Option<TrafficStatistics> {
         let current_time = SystemTime::now();
         if let Ok(dt) = current_time.duration_since(self.dlul_time) {
             let t = 1000.0 / dt.as_millis() as f64;
@@ -97,12 +109,10 @@ impl BandwidthCounter {
             if self.initial_set {
                 self.initial_set = false;
                 None
+            } else {
+                Some(TrafficStatistics { dl, ul })
             }
-            else {
-                Some(TrafficStatistics{ dl, ul })
-            }
-        }
-        else {
+        } else {
             None
         }
     }

@@ -1,5 +1,5 @@
-mod utils;
 mod network_utils;
+mod utils;
 
 mod bandwidth_utils;
 use bandwidth_utils::*;
@@ -13,13 +13,13 @@ use netgear_parser::*;
 mod huawei_parser;
 use huawei_parser::*;
 
-mod res;
 mod bar_plot_widget;
+mod res;
 
 mod main_window;
 use main_window::*;
 
-use fltk::{*, prelude::*};
+use fltk::{prelude::*, *};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -33,10 +33,7 @@ enum Message {
     Quit,
 }
 
-const MANUFACTURERS: [&str; 2] = [
-    "Netgear",
-    "Huawei",
-];
+const MANUFACTURERS: [&str; 2] = ["Netgear", "Huawei"];
 
 fn main() {
     let app = app::App::default();
@@ -97,8 +94,7 @@ fn main() {
 
                             tx.send(Message::GetInfo);
                             wnd.start_poll();
-                        }
-                        else {
+                        } else {
                             info_thread_tx.send(());
                             if let Some(jh) = jh_getinfo.take() {
                                 if let Err(err) = jh.join() {
@@ -107,73 +103,73 @@ fn main() {
                             }
                             wnd.stop_poll();
                         }
-                    },
+                    }
                     Message::GetInfo => {
                         let host_address = host_address.clone();
-                        println!("Connecting to modem {} host {}",
-                            MANUFACTURERS[manufacturer_id as usize], host_address);
-                        
-                        jh_getinfo = Some(thread::spawn(
-                            move || {
-                                let modem_info = match manufacturer_id {
+                        println!(
+                            "Connecting to modem {} host {}",
+                            MANUFACTURERS[manufacturer_id as usize], host_address
+                        );
+
+                        jh_getinfo = Some(thread::spawn(move || {
+                            let modem_info = match manufacturer_id {
                                 0 => NetgearParser::get_info(host_address.as_str()),
                                 1 => HuaweiParser::get_info(host_address.as_str()),
                                 _ => {
                                     eprintln!("Error: Unknown modem manufacturer ID");
                                     Err(ModemError::Unknown)
-                                },
-                                };
+                                }
+                            };
 
-                                match modem_info {
+                            match modem_info {
                                 Ok(modem_info) => {
                                     tx.send(Message::ReceivedInfo(modem_info));
                                     tx.send(Message::InfoOk);
-                                },
+                                }
                                 Err(e) => {
                                     tx.send(Message::InfoError(e));
                                 }
+                            };
+
+                            let start_time = SystemTime::now();
+
+                            let mut still_running = true;
+                            while still_running {
+                                // Sleep for 100ms
+                                thread::sleep(Duration::from_millis(100));
+
+                                still_running = match info_thread_rx.recv() {
+                                    Some(()) => {
+                                        // Stop thread
+                                        false
+                                    }
+                                    None => {
+                                        // Run next poll
+                                        true
+                                    }
                                 };
-                                
-                                let start_time = SystemTime::now();
 
-                                let mut still_running = true;
-                                while still_running {
-                                    // Sleep for 100ms
-                                    thread::sleep(Duration::from_millis(100));
-                                    
-                                    still_running = match info_thread_rx.recv() {
-                                        Some(()) => {
-                                            // Stop thread
-                                            false
-                                        }
-                                        None => {
-                                            // Run next poll
-                                            true
-                                        }
-                                    };
-
-                                    // Check if poller is still active
-                                    let current_time = SystemTime::now();
-                                    match current_time.duration_since(start_time) {
-                                        Ok(t) => {
-                                            if t >= poller_timeout {
-                                                break;
-                                            }
-                                        },
-                                        Err(err) => {
-                                            eprintln!("Thread Timeout Error: {err:?}");
+                                // Check if poller is still active
+                                let current_time = SystemTime::now();
+                                match current_time.duration_since(start_time) {
+                                    Ok(t) => {
+                                        if t >= poller_timeout {
                                             break;
                                         }
                                     }
-                                }
-
-                                if still_running {
-                                    // Run next poll
-                                    tx.send(Message::GetInfo);
+                                    Err(err) => {
+                                        eprintln!("Thread Timeout Error: {err:?}");
+                                        break;
+                                    }
                                 }
                             }
-                        ));
-                    },
+
+                            if still_running {
+                                // Run next poll
+                                tx.send(Message::GetInfo);
+                            }
+                        }));
+                    }
                     Message::ReceivedInfo(info) => {
                         println!("{info}\n");
 
@@ -182,37 +178,37 @@ fn main() {
                         if let Some(traffic_statistics) = info.traffic_statistics {
                             // Bandwidth
                             match info.traffic_mode {
-                            TrafficMode::Absolute => {
-                                let dl_str = format_bandwidth(traffic_statistics.dl);
-                                let ul_str = format_bandwidth(traffic_statistics.ul);
-
-                                println!("Download : {dl_str} Upload : {ul_str}\n");
-
-                                wnd.set_bandwidth_data(traffic_statistics);
-                            },
-                            TrafficMode::Cumulative => {
-                                if let Some(dlul) = dlul.update_with_total_values(traffic_statistics) {
-                                    let dl_str = format_bandwidth(dlul.dl);
-                                    let ul_str = format_bandwidth(dlul.ul);
+                                TrafficMode::Absolute => {
+                                    let dl_str = format_bandwidth(traffic_statistics.dl);
+                                    let ul_str = format_bandwidth(traffic_statistics.ul);
 
                                     println!("Download : {dl_str} Upload : {ul_str}\n");
 
-                                    wnd.set_bandwidth_data(dlul);
+                                    wnd.set_bandwidth_data(traffic_statistics);
                                 }
-                            }
+                                TrafficMode::Cumulative => {
+                                    if let Some(dlul) =
+                                        dlul.update_with_total_values(traffic_statistics)
+                                    {
+                                        let dl_str = format_bandwidth(dlul.dl);
+                                        let ul_str = format_bandwidth(dlul.ul);
+
+                                        println!("Download : {dl_str} Upload : {ul_str}\n");
+
+                                        wnd.set_bandwidth_data(dlul);
+                                    }
+                                }
                             };
                         }
-                    },
+                    }
                     Message::InfoOk => {
                         wnd.set_error(None);
-                    },
-                    Message::InfoError(e) => {
-                        match e {
+                    }
+                    Message::InfoError(e) => match e {
                         ModemError::HttpConnection => wnd.set_error(Some("HTTP Error")),
                         ModemError::Access => wnd.set_error(Some("Access Error")),
                         ModemError::DataParsing => wnd.set_error(Some("Data Parsing Error")),
                         ModemError::Unknown => wnd.set_error(Some("Unknown error")),
-                        }
                     },
                     Message::Quit => {
                         app.quit();

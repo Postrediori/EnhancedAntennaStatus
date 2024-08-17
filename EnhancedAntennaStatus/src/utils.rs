@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use std::fmt::Debug;
+use std::str::FromStr;
 
 /// Copy String object to array of chars
 #[macro_export]
@@ -7,27 +7,24 @@ macro_rules! copy_string_to_array {
     ($array:tt, $string:expr) => {
         let len = $string.len().min($array.len() - 1);
         $array[..len].copy_from_slice(&$string.chars().collect::<Vec<char>>()[..len]);
-    }
+    };
 }
 pub use copy_string_to_array;
 
 /// Flag wrapper that monitors change of the flag
-pub struct ValueChangeObserver<T: PartialEq+Copy> {
+pub struct ValueChangeObserver<T: PartialEq + Copy> {
     val: Option<T>,
 }
 
-impl<T: PartialEq+Copy> ValueChangeObserver<T> {
+impl<T: PartialEq + Copy> ValueChangeObserver<T> {
     pub fn new() -> Self {
         let val: Option<T> = None;
-        Self {
-            val,
-        }
+        Self { val }
     }
     pub fn update_and_check_if_changed(&mut self, new_val: T) -> bool {
         let status = if let Some(v) = self.val {
             v != new_val
-        }
-        else {
+        } else {
             true
         };
         if status {
@@ -42,19 +39,17 @@ pub fn json_str_as_type<T: FromStr>(val: &serde_json::Value) -> Option<T> {
     if let Some(val) = val.as_str() {
         if let Ok(val) = val.parse::<T>() {
             Some(val)
-        }
-        else {
+        } else {
             None
         }
-    }
-    else {
+    } else {
         None
     }
 }
 
 /// Truncate unit at the end of the string
 fn truncate_unit(s: &mut String) {
-    const UNITS: [&'static str; 2] = [ "dB", "dBm" ];
+    const UNITS: [&'static str; 2] = ["dB", "dBm"];
 
     for u in UNITS.iter() {
         if s.ends_with(u) {
@@ -62,7 +57,7 @@ fn truncate_unit(s: &mut String) {
             break;
         }
     }
- }
+}
 
 /// Parse XML element content as string
 pub fn get_xml_element(xml: &xmltree::Element, name: &str) -> Option<String> {
@@ -75,12 +70,19 @@ pub fn get_xml_element(xml: &xmltree::Element, name: &str) -> Option<String> {
 }
 
 /// Parse XML element content as type T
-pub fn get_xml_element_as<T: FromStr>(xml: &xmltree::Element, name: &str) -> Option<T> where <T as FromStr>::Err: Debug {
+pub fn get_xml_element_as<T: FromStr>(xml: &xmltree::Element, name: &str) -> Option<T>
+where
+    <T as FromStr>::Err: Debug,
+{
     if let Some(element) = xml.get_child(name) {
         if let Some(str) = element.get_text() {
             match str.to_string().parse::<T>() {
-            Ok(val) => { return Some(val); },
-            Err(e) => { eprintln!("Error: parsing element '{}': {:?}", name, e); },
+                Ok(val) => {
+                    return Some(val);
+                }
+                Err(e) => {
+                    eprintln!("Error: parsing element '{}': {:?}", name, e);
+                }
             }
         }
     }
@@ -88,14 +90,21 @@ pub fn get_xml_element_as<T: FromStr>(xml: &xmltree::Element, name: &str) -> Opt
 }
 
 /// Parse XML element content as type T with possible unit
-pub fn get_xml_element_as_unit<T: FromStr>(xml: &xmltree::Element, name: &str) -> Option<T> where <T as FromStr>::Err: Debug {
+pub fn get_xml_element_as_unit<T: FromStr>(xml: &xmltree::Element, name: &str) -> Option<T>
+where
+    <T as FromStr>::Err: Debug,
+{
     if let Some(element) = xml.get_child(name) {
         if let Some(str) = element.get_text() {
             let mut str = str.to_string();
             truncate_unit(&mut str);
             match str.parse::<T>() {
-            Ok(val) => { return Some(val); },
-            Err(e) => { eprintln!("Error parsing element '{}': {:?}", name, e); },
+                Ok(val) => {
+                    return Some(val);
+                }
+                Err(e) => {
+                    eprintln!("Error parsing element '{}': {:?}", name, e);
+                }
             }
         }
     }

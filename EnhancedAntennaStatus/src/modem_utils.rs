@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::utils::*;
 use crate::bandwidth_utils::*;
+use crate::utils::*;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum NetworkMode {
@@ -48,9 +48,7 @@ impl PlmnStatus {
     pub fn from_string(plmn_str: &str) -> Self {
         let mut plmn = ['\0'; 6];
         copy_string_to_array!(plmn, plmn_str);
-        Self {
-            plmn,
-        }
+        Self { plmn }
     }
     pub fn to_string(&self) -> String {
         String::from_iter(self.plmn.iter())
@@ -67,7 +65,9 @@ impl BatteryStatus {
     fn get_battery_percent_and_status(&self) -> (i64, String) {
         (
             self.percent,
-            String::from_iter(self.status.iter()).trim_matches(char::from(0)).to_string()
+            String::from_iter(self.status.iter())
+                .trim_matches(char::from(0))
+                .to_string(),
         )
     }
 }
@@ -99,8 +99,12 @@ impl DeviceInformation {
     }
     pub fn get_manufacturer_and_model(&self) -> (String, String) {
         (
-            String::from_iter(self.manufacturer.iter()).trim_matches(char::from(0)).to_string(),
-            String::from_iter(self.model.iter()).trim_matches(char::from(0)).to_string()
+            String::from_iter(self.manufacturer.iter())
+                .trim_matches(char::from(0))
+                .to_string(),
+            String::from_iter(self.model.iter())
+                .trim_matches(char::from(0))
+                .to_string(),
         )
     }
 }
@@ -133,7 +137,7 @@ impl ModemStatus {
         match self.mode {
             NetworkMode::Lte => {
                 format!("LTE{}", if self.get_ca_count() > 0 { "-A" } else { "" })
-            },
+            }
             NetworkMode::Wcdma => "WCDMA".to_string(),
             NetworkMode::Gsm => "GSM".to_string(),
             NetworkMode::Unknown => "Unknown".to_string(),
@@ -144,9 +148,16 @@ impl ModemStatus {
     }
     pub fn get_band(&self) -> String {
         let ca_count = self.get_ca_count();
-        let band = format!("{}{}",
-            String::from_iter(self.band.iter()).trim_matches(char::from(0)).to_string(),
-            if ca_count > 0 { format!("+{ca_count}CA") } else { "".to_string() }
+        let band = format!(
+            "{}{}",
+            String::from_iter(self.band.iter())
+                .trim_matches(char::from(0))
+                .to_string(),
+            if ca_count > 0 {
+                format!("+{ca_count}CA")
+            } else {
+                "".to_string()
+            }
         );
         band
     }
@@ -158,8 +169,7 @@ impl ModemStatus {
     pub fn get_battery_percent_and_status(&self) -> Option<(i64, String)> {
         if let Some(battery_status) = self.battery_status {
             Some(battery_status.get_battery_percent_and_status())
-        }
-        else {
+        } else {
             None
         }
     }
@@ -168,7 +178,7 @@ impl ModemStatus {
 impl fmt::Display for ModemStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mode = self.get_mode();
-        
+
         let plmn = self.get_plmn();
 
         let band = self.get_band();
@@ -177,22 +187,25 @@ impl fmt::Display for ModemStatus {
 
         let mode_info = match self.signal_info {
             SignalInfo::Wcdma(wcdma_info) => {
-                format!("\nRSCP : {}dBm EC/IO : {}dB",
-                    wcdma_info.rscp, wcdma_info.ecio)
-            },
+                format!(
+                    "\nRSCP : {}dBm EC/IO : {}dB",
+                    wcdma_info.rscp, wcdma_info.ecio
+                )
+            }
             SignalInfo::Lte(lte_info) => {
-                format!("\nRSRQ/RSRP/SINR : {}dB/{}dBm/{}dB",
-                    lte_info.rsrq, lte_info.rsrp, lte_info.sinr)
-            },
-            _=> { "".to_string() }
+                format!(
+                    "\nRSRQ/RSRP/SINR : {}dB/{}dBm/{}dB",
+                    lte_info.rsrq, lte_info.rsrp, lte_info.sinr
+                )
+            }
+            _ => "".to_string(),
         };
 
-        write!(f,
+        write!(
+            f,
             "Network mode : {}\nRSSI : {} dBm\nPLMN : {}\nBand : {}\nCell ID : {} / {}{}",
-            mode, self.rssi,
-            plmn, band,
-            cell_id_hex, cell_id,
-            mode_info)
+            mode, self.rssi, plmn, band, cell_id_hex, cell_id, mode_info
+        )
     }
 }
 

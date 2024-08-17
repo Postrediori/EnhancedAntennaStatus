@@ -1,10 +1,10 @@
-use fltk::{*, prelude::*};
+use fltk::{prelude::*, *};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::collections::VecDeque;
-use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::{DateTime, Local};
+use std::cell::RefCell;
+use std::collections::VecDeque;
+use std::rc::Rc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::bandwidth_utils::*;
 
@@ -62,10 +62,14 @@ impl BarPlotWidget {
                 let unit = unit.borrow();
 
                 draw::push_clip(i.x(), i.y(), i.w(), i.h());
-                
-                let bg_color = if i.active() { COLOR_BACKGROUND } else { COLOR_BACKGROUND_INACTIVE };
+
+                let bg_color = if i.active() {
+                    COLOR_BACKGROUND
+                } else {
+                    COLOR_BACKGROUND_INACTIVE
+                };
                 draw::draw_rect_fill(i.x(), i.y(), i.w(), i.h(), bg_color);
-                
+
                 const MARGIN_X: i32 = 2;
                 const MARGIN_Y: i32 = 1;
 
@@ -80,11 +84,10 @@ impl BarPlotWidget {
 
                             if k < history.len() {
                                 Some(k)
-                            }
-                            else {
+                            } else {
                                 None
                             }
-                        },
+                        }
                         _ => None,
                     };
 
@@ -99,12 +102,13 @@ impl BarPlotWidget {
                             draw::Coord::<i32>(x1, y1),
                             draw::Coord::<i32>(x2 - 1, y1),
                             draw::Coord::<i32>(x2 - 1, y2),
-                            draw::Coord::<i32>(x1, y2));
+                            draw::Coord::<i32>(x1, y2),
+                        );
                     }
 
                     for k in 0..history.len() {
                         let n = history[k].1;
-                        
+
                         let y = ((n - min) as f64) / range;
                         let yi = (100.0 * y) as i32;
 
@@ -114,68 +118,70 @@ impl BarPlotWidget {
                             (100, enums::Color::DarkGreen),
                         ];
 
-                        let c: usize =
-                            if yi < PALETTE[0].0 {
-                                0
+                        let c: usize = if yi < PALETTE[0].0 {
+                            0
+                        } else {
+                            if yi < PALETTE[1].0 {
+                                1
                             } else {
-                                if yi < PALETTE[1].0 {
-                                    1
-                                } else {
-                                    2
-                                }
-                            };
+                                2
+                            }
+                        };
 
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
                         let x2 = (i.x() as f64 + dx * ((k + 1) as f64)) as i32 + MARGIN_X;
 
                         let y0 = i.y() + i.h() - MARGIN_Y;
-                        let y = i.y() + (((i.h() - MARGIN_Y * 2) as f64) * (1.0 - y)) as i32 - MARGIN_Y;
+                        let y =
+                            i.y() + (((i.h() - MARGIN_Y * 2) as f64) * (1.0 - y)) as i32 - MARGIN_Y;
 
                         draw::set_draw_color(PALETTE[c].1);
                         draw::draw_polygon3(
                             draw::Coord::<i32>(x1, y),
                             draw::Coord::<i32>(x2 - 1, y),
                             draw::Coord::<i32>(x2 - 1, y0),
-                            draw::Coord::<i32>(x1, y0));
+                            draw::Coord::<i32>(x1, y0),
+                        );
                     }
-                    
+
                     if let Some(k) = k {
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
                         let x2 = (i.x() as f64 + dx * ((k + 1) as f64)) as i32 + MARGIN_X;
-                        
+
                         let (t, n) = history[k];
                         let dt: DateTime<Local> = t.into();
-    
+
                         let n_str = format!("{} {}", n, unit);
                         let time_str = format!("{}", dt.format("%T"));
-    
+
                         draw::set_font(enums::Font::Helvetica, 14);
-                        
+
                         let n_area = draw::text_extents(&n_str);
                         let t_area = draw::text_extents(&time_str);
-    
+
                         let w = n_area.2.max(t_area.2) + MARGIN_X;
                         let h = n_area.3 + t_area.3 + MARGIN_Y * 4;
 
-                        let x = 
-                            if x2 + w < i.x() + i.w() {
-                                // Align to the right
-                                x2
-                            }
-                            else {
-                                // Align to the left
-                                x1 - w
-                            };
+                        let x = if x2 + w < i.x() + i.w() {
+                            // Align to the right
+                            x2
+                        } else {
+                            // Align to the left
+                            x1 - w
+                        };
 
-                        draw::draw_rect_fill(x, i.y() + MARGIN_Y,
-                            w, h,
-                            COLOR_TOOLTIP);
-                        
+                        draw::draw_rect_fill(x, i.y() + MARGIN_Y, w, h, COLOR_TOOLTIP);
+
                         draw::set_draw_color(COLOR_TEXT);
-                        draw::draw_text2(&n_str, x, i.y() + MARGIN_Y,
-                            0, 0, enums::Align::TopLeft);
-                        draw::draw_text2(&time_str, x, i.y() + MARGIN_Y + n_area.3,
-                            0, 0, enums::Align::TopLeft);
+                        draw::draw_text2(&n_str, x, i.y() + MARGIN_Y, 0, 0, enums::Align::TopLeft);
+                        draw::draw_text2(
+                            &time_str,
+                            x,
+                            i.y() + MARGIN_Y + n_area.3,
+                            0,
+                            0,
+                            enums::Align::TopLeft,
+                        );
                     }
                 }
 
@@ -197,18 +203,18 @@ impl BarPlotWidget {
                     enums::Event::Move => {
                         *mouse_coord = Some(fltk::app::event_coords());
                         true
-                    },
+                    }
                     enums::Event::Enter => {
                         *mouse_coord = Some(fltk::app::event_coords());
                         true
-                    },
+                    }
                     enums::Event::Leave => {
                         *mouse_coord = None;
                         true
-                    },
+                    }
                     _ => false,
                 };
-                if status { 
+                if status {
                     w.redraw();
                 }
                 status
@@ -217,7 +223,8 @@ impl BarPlotWidget {
 
         Self {
             inner,
-            min, max,
+            min,
+            max,
             history,
             unit,
         }
@@ -262,7 +269,7 @@ impl DlUlBarPlotWidget {
         let mouse_coord: Option<(i32, i32)> = None;
         let mouse_coord = Rc::from(RefCell::from(mouse_coord));
 
-        let history = VecDeque::<(SystemTime, TrafficStatistics)>::with_capacity(HISTORY_SIZE+1);
+        let history = VecDeque::<(SystemTime, TrafficStatistics)>::with_capacity(HISTORY_SIZE + 1);
         let history = Rc::from(RefCell::from(history));
 
         inner.draw({
@@ -273,10 +280,14 @@ impl DlUlBarPlotWidget {
                 let mouse_coord = mouse_coord.borrow();
 
                 draw::push_clip(i.x(), i.y(), i.w(), i.h());
-                
-                let bg_color = if i.active() { COLOR_BACKGROUND } else { COLOR_BACKGROUND_INACTIVE };
+
+                let bg_color = if i.active() {
+                    COLOR_BACKGROUND
+                } else {
+                    COLOR_BACKGROUND_INACTIVE
+                };
                 draw::draw_rect_fill(i.x(), i.y(), i.w(), i.h(), bg_color);
-                
+
                 const MARGIN_X: i32 = 2;
                 const MARGIN_Y: i32 = 1;
 
@@ -292,11 +303,10 @@ impl DlUlBarPlotWidget {
 
                             if k < h.len() {
                                 Some(k)
-                            }
-                            else {
+                            } else {
                                 None
                             }
-                        },
+                        }
                         _ => None,
                     };
 
@@ -311,19 +321,27 @@ impl DlUlBarPlotWidget {
                             draw::Coord::<i32>(x1, y1),
                             draw::Coord::<i32>(x2 - 1, y1),
                             draw::Coord::<i32>(x2 - 1, y2),
-                            draw::Coord::<i32>(x1, y2));
+                            draw::Coord::<i32>(x1, y2),
+                        );
                     }
 
-                    let max_dlul: (_, TrafficStatistics) = h.into_iter().reduce( |accum, current| {
-                            (UNIX_EPOCH, TrafficStatistics {
-                                dl: accum.1.dl.max(current.1.dl), ul: accum.1.ul.max(current.1.ul)
-                            })
-                        }).unwrap();
+                    let max_dlul: (_, TrafficStatistics) = h
+                        .into_iter()
+                        .reduce(|accum, current| {
+                            (
+                                UNIX_EPOCH,
+                                TrafficStatistics {
+                                    dl: accum.1.dl.max(current.1.dl),
+                                    ul: accum.1.ul.max(current.1.ul),
+                                },
+                            )
+                        })
+                        .unwrap();
                     let max_dlul = max_dlul.1.dl.max(max_dlul.1.ul);
 
                     let max_plot = nearest_fib(max_dlul / SIZE_MB);
                     let max_mb = max_plot * SIZE_MB;
-                    
+
                     for k in 0..history.len() {
                         let (_, dlul) = history[k];
 
@@ -333,8 +351,7 @@ impl DlUlBarPlotWidget {
                         let (y1, y2, color1, color2) = {
                             if dlul.ul < dlul.dl {
                                 (yul, ydl, COLOR_DL_AND_UL, COLOR_DL)
-                            }
-                            else {
+                            } else {
                                 (ydl, yul, COLOR_DL_AND_UL, COLOR_UL)
                             }
                         };
@@ -343,74 +360,91 @@ impl DlUlBarPlotWidget {
                         let x2 = (i.x() as f64 + dx * ((k + 1) as f64)) as i32 + MARGIN_X;
 
                         let y0 = i.y() + i.h() - MARGIN_Y;
-                        let y1 = i.y() + (((i.h() - MARGIN_Y * 2) as f64) * (1.0 - y1)) as i32 - MARGIN_Y;
-                        let y2 = i.y() + (((i.h() - MARGIN_Y * 2) as f64) * (1.0 - y2)) as i32 - MARGIN_Y;
+                        let y1 = i.y() + (((i.h() - MARGIN_Y * 2) as f64) * (1.0 - y1)) as i32
+                            - MARGIN_Y;
+                        let y2 = i.y() + (((i.h() - MARGIN_Y * 2) as f64) * (1.0 - y2)) as i32
+                            - MARGIN_Y;
 
                         draw::set_draw_color(color1);
                         draw::draw_polygon3(
                             draw::Coord::<i32>(x1, y1),
                             draw::Coord::<i32>(x2 - 1, y1),
                             draw::Coord::<i32>(x2 - 1, y0),
-                            draw::Coord::<i32>(x1, y0));
+                            draw::Coord::<i32>(x1, y0),
+                        );
 
                         draw::set_draw_color(color2);
                         draw::draw_polygon3(
                             draw::Coord::<i32>(x1, y2),
                             draw::Coord::<i32>(x2 - 1, y2),
                             draw::Coord::<i32>(x2 - 1, y1),
-                            draw::Coord::<i32>(x1, y1));
+                            draw::Coord::<i32>(x1, y1),
+                        );
                     }
 
                     let str = format!("{max_plot} MBit/s");
                     draw::set_draw_color(COLOR_TEXT);
                     draw::set_font(enums::Font::HelveticaBold, 16);
-                    draw::draw_text2(&str, i.x() + i.w() - MARGIN_X, i.y() + MARGIN_Y,
-                        0, 0, enums::Align::TopRight);
+                    draw::draw_text2(
+                        &str,
+                        i.x() + i.w() - MARGIN_X,
+                        i.y() + MARGIN_Y,
+                        0,
+                        0,
+                        enums::Align::TopRight,
+                    );
 
                     if let Some(k) = k {
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
                         let x2 = (i.x() as f64 + dx * ((k + 1) as f64)) as i32 + MARGIN_X;
-                        
+
                         let (t, dlul) = history[k];
                         let dt: DateTime<Local> = t.into();
-    
+
                         let dl_str = format!("DL: {}", format_bandwidth(dlul.dl));
                         let ul_str = format!("UL: {}", format_bandwidth(dlul.ul));
                         let time_str = format!("{}", dt.format("%T"));
-    
+
                         draw::set_font(enums::Font::Helvetica, 14);
-                        
+
                         let dl_area = draw::text_extents(&dl_str);
                         let ul_area = draw::text_extents(&ul_str);
                         let t_area = draw::text_extents(&time_str);
-    
+
                         let w = dl_area.2.max(ul_area.2.max(t_area.2)) + MARGIN_X * 2;
                         let h = dl_area.3 + ul_area.3 + t_area.3 + MARGIN_Y * 6;
 
-                        let x = 
-                            if x2 + w < i.x() + i.w() {
-                                // Align to the right
-                                x2
-                            }
-                            else {
-                                // Align to the left
-                                x1 - w
-                            };
+                        let x = if x2 + w < i.x() + i.w() {
+                            // Align to the right
+                            x2
+                        } else {
+                            // Align to the left
+                            x1 - w
+                        };
 
-                        draw::draw_rect_fill(x, i.y() + MARGIN_Y,
-                            w, h,
-                            COLOR_TOOLTIP);
-                        
+                        draw::draw_rect_fill(x, i.y() + MARGIN_Y, w, h, COLOR_TOOLTIP);
+
                         draw::set_draw_color(COLOR_TEXT);
-                        draw::draw_text2(&dl_str, x, i.y() + MARGIN_Y,
-                            0, 0, enums::Align::TopLeft);
-                        draw::draw_text2(&ul_str, x, i.y() + MARGIN_Y + dl_area.3,
-                            0, 0, enums::Align::TopLeft);
-                        draw::draw_text2(&time_str, x, i.y() + MARGIN_Y * 3 + (dl_area.3 + ul_area.3),
-                            0, 0, enums::Align::TopLeft);
+                        draw::draw_text2(&dl_str, x, i.y() + MARGIN_Y, 0, 0, enums::Align::TopLeft);
+                        draw::draw_text2(
+                            &ul_str,
+                            x,
+                            i.y() + MARGIN_Y + dl_area.3,
+                            0,
+                            0,
+                            enums::Align::TopLeft,
+                        );
+                        draw::draw_text2(
+                            &time_str,
+                            x,
+                            i.y() + MARGIN_Y * 3 + (dl_area.3 + ul_area.3),
+                            0,
+                            0,
+                            enums::Align::TopLeft,
+                        );
                     }
                 }
-                
+
                 let border_color = match *mouse_coord {
                     Some((_, _)) => COLOR_BORDER_SELECT,
                     None => COLOR_BORDER,
@@ -429,34 +463,33 @@ impl DlUlBarPlotWidget {
                     enums::Event::Move => {
                         *mouse_coord = Some(fltk::app::event_coords());
                         true
-                    },
+                    }
                     enums::Event::Enter => {
                         *mouse_coord = Some(fltk::app::event_coords());
                         true
-                    },
+                    }
                     enums::Event::Leave => {
                         *mouse_coord = None;
                         true
-                    },
+                    }
                     _ => false,
                 };
-                if status { 
+                if status {
                     w.redraw();
                 }
                 status
             }
         });
 
-        Self {
-            inner,
-            history,
-        }
+        Self { inner, history }
     }
     pub fn push_value(&mut self, dlul: TrafficStatistics) {
         if self.history.borrow().len() == HISTORY_SIZE {
             self.history.borrow_mut().pop_front();
         }
-        self.history.borrow_mut().push_back((SystemTime::now(), dlul));
+        self.history
+            .borrow_mut()
+            .push_back((SystemTime::now(), dlul));
     }
     pub fn clear_history(&mut self) {
         self.history.borrow_mut().clear();

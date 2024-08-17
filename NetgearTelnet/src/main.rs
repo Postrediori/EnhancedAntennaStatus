@@ -1,8 +1,7 @@
-use telnet::{Telnet, Event};
+use telnet::{Event, Telnet};
 
 fn get_modem_at_status(host: &str) -> Option<String> {
-    let mut telnet = Telnet::connect((host, 5510), 128)
-        .expect("Couldn't connect to the server...");
+    let mut telnet = Telnet::connect((host, 5510), 128).expect("Couldn't connect to the server...");
 
     let command_str = "at !gstatus?\r\n";
     telnet.write(command_str.as_bytes()).expect("Read error");
@@ -20,9 +19,13 @@ fn get_modem_at_status(host: &str) -> Option<String> {
                 if s.ends_with("\r\nOK\r\n") {
                     break;
                 }
-            },
-            Event::NoData => { break; },
-            _ => { println!("{:?}", event); }
+            }
+            Event::NoData => {
+                break;
+            }
+            _ => {
+                println!("{:?}", event);
+            }
         }
     }
 
@@ -34,8 +37,7 @@ fn main() {
 
     if let Some(str) = get_modem_at_status(host) {
         print!("{}", str);
-    }
-    else {
+    } else {
         eprintln!("Error: Cannot get modem AT status\n");
     }
 }

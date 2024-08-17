@@ -1,8 +1,8 @@
 /*
  * HTTP utils
  */
-use std::time::Duration;
 use http::Uri;
+use std::time::Duration;
 
 const HTTP_TIMEOUT: Duration = Duration::from_millis(3_000);
 
@@ -11,8 +11,8 @@ pub fn get_url_json(host: &str, query: &str) -> Option<serde_json::Value> {
         .scheme("http")
         .authority(host)
         .path_and_query(query)
-        .build() {
-
+        .build()
+    {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(HTTP_TIMEOUT)
             .build();
@@ -25,7 +25,11 @@ pub fn get_url_json(host: &str, query: &str) -> Option<serde_json::Value> {
                 }
             }
             Err(ureq::Error::Status(code, response)) => {
-                eprintln!("HTTP error code={} response={}", code, response.status_text());
+                eprintln!(
+                    "HTTP error code={} response={}",
+                    code,
+                    response.status_text()
+                );
             }
             Err(e) => {
                 eprintln!("HTTP error={}", &e.to_string());
@@ -40,14 +44,13 @@ pub fn get_url_xml(host: &str, query: &str) -> Option<xmltree::Element> {
         .scheme("http")
         .authority(host)
         .path_and_query(query)
-        .build() {
-
+        .build()
+    {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(HTTP_TIMEOUT)
             .build();
 
-        let req = agent.get(&path.to_string())
-            .set("Accept", "*/*");
+        let req = agent.get(&path.to_string()).set("Accept", "*/*");
 
         match req.call() {
             Ok(response) => {
@@ -55,15 +58,19 @@ pub fn get_url_xml(host: &str, query: &str) -> Option<xmltree::Element> {
                     match xmltree::Element::parse(xml.as_bytes()) {
                         Ok(parsed_xml) => {
                             return Some(parsed_xml);
-                        },
+                        }
                         Err(e) => {
                             eprintln!("XML DOM error={}", &e.to_string());
                         }
-                    }    
+                    }
                 }
             }
             Err(ureq::Error::Status(code, response)) => {
-                eprintln!("HTTP error code={} response={}", code, response.status_text());
+                eprintln!(
+                    "HTTP error code={} response={}",
+                    code,
+                    response.status_text()
+                );
             }
             Err(e) => {
                 eprintln!("HTTP error={}", &e.to_string());
@@ -73,19 +80,22 @@ pub fn get_url_xml(host: &str, query: &str) -> Option<xmltree::Element> {
     return None;
 }
 
-pub fn get_url_xml_with_session_token(host: &str, sesion_token: &Option<(String, String)>, query: &str) -> Option<xmltree::Element> {
+pub fn get_url_xml_with_session_token(
+    host: &str,
+    sesion_token: &Option<(String, String)>,
+    query: &str,
+) -> Option<xmltree::Element> {
     if let Ok(path) = Uri::builder()
         .scheme("http")
         .authority(host)
         .path_and_query(query)
-        .build() {
-
+        .build()
+    {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(HTTP_TIMEOUT)
             .build();
 
-        let mut req = agent.get(&path.to_string())
-            .set("Accept", "*/*");
+        let mut req = agent.get(&path.to_string()).set("Accept", "*/*");
         if let Some((session_info, token_info)) = sesion_token {
             req = req
                 .set("Host", host)
@@ -100,15 +110,19 @@ pub fn get_url_xml_with_session_token(host: &str, sesion_token: &Option<(String,
                     match xmltree::Element::parse(xml.as_bytes()) {
                         Ok(parsed_xml) => {
                             return Some(parsed_xml);
-                        },
+                        }
                         Err(e) => {
                             eprintln!("XML DOM error={}", &e.to_string());
                         }
-                    }    
+                    }
                 }
             }
             Err(ureq::Error::Status(code, response)) => {
-                eprintln!("HTTP error code={} response={}", code, response.status_text());
+                eprintln!(
+                    "HTTP error code={} response={}",
+                    code,
+                    response.status_text()
+                );
             }
             Err(e) => {
                 eprintln!("HTTP error={}", &e.to_string());
