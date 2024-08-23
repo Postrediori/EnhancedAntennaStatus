@@ -9,13 +9,13 @@ build = "build.rs"
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
-[target.'cfg(all(target_arch = "x86_64", any(target_os = "windows", target_os = "linux")))'.dependencies]
+[target.'cfg(target_arch = "x86_64")'.dependencies]
 fltk = { version = "1", features = ["fltk-bundled"] }
 
 [dependencies]
 base64 = "0.22"
 chrono = "0.4"
-fltk = { version = "1" }
+fltk = "1"
 http = "1"
 rust-embed = "8.3"
 serde_json = "1"
