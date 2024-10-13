@@ -36,6 +36,7 @@ Tested on:
 - [ ] Create pre-filled list of host addresses: scan networks and get gateways
 - [ ] Additional info for Netgear from Telnet (channels and band widths) (need to resolve long timeout issues)
 - [x] Download/upload bar plot
+- [x] Huawei support
 
 ## Links
 
