@@ -36,7 +36,7 @@ pub fn get_url_json(host: &str, query: &str) -> Option<serde_json::Value> {
             }
         }
     }
-    return None;
+    None
 }
 
 pub fn get_url_xml(host: &str, query: &str) -> Option<xmltree::Element> {
@@ -77,12 +77,12 @@ pub fn get_url_xml(host: &str, query: &str) -> Option<xmltree::Element> {
             }
         }
     }
-    return None;
+    None
 }
 
 pub fn get_url_xml_with_session_token(
     host: &str,
-    sesion_token: &Option<(String, String)>,
+    sesion_token: Option<&(String, String)>,
     query: &str,
 ) -> Option<xmltree::Element> {
     if let Ok(path) = Uri::builder()
@@ -125,9 +125,9 @@ pub fn get_url_xml_with_session_token(
                 );
             }
             Err(e) => {
-                eprintln!("HTTP error={}", &e.to_string());
+                eprintln!("HTTP error={e:?}");
             }
         }
     }
-    return None;
+    None
 }

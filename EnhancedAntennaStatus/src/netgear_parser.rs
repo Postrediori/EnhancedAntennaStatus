@@ -1,7 +1,14 @@
-use crate::bandwidth_utils::*;
-use crate::modem_utils::*;
-use crate::network_utils::*;
-use crate::utils::*;
+#![allow(clippy::similar_names)]
+
+use std::str::FromStr;
+
+use crate::bandwidth_utils::{TrafficMode, TrafficStatistics, SIZE_TB};
+use crate::modem_utils::{
+    BatteryStatus, DeviceInformation, DeviceTemperature, LteSignalInfo, ModemError,
+    ModemInfoParser, ModemStatus, NetworkMode, PlmnStatus, SignalInfo, WcdmaSignalInfo,
+};
+use crate::network_utils::get_url_json;
+use crate::utils::{copy_string_to_array, json_str_as_type};
 
 fn get_mode_by_description(s: &str) -> NetworkMode {
     match s {
@@ -24,10 +31,7 @@ impl NetgearParser {
     }
 
     fn parse_info_json(json: &serde_json::Value) -> ModemStatus {
-        let ca_count = match json["wwan"]["ca"]["SCCcount"].as_i64() {
-            Some(i) => i,
-            None => 0,
-        };
+        let ca_count = json["wwan"]["ca"]["SCCcount"].as_i64().unwrap_or(0);
 
         let mode = get_mode_by_description(json["wwan"]["currentNWserviceType"].as_str().unwrap());
 
@@ -38,7 +42,7 @@ impl NetgearParser {
             json["wwanadv"]["MCC"].as_str().unwrap(),
             json["wwanadv"]["MNC"].as_str().unwrap()
         );
-        let plmn = PlmnStatus::from_string(&plmn_str);
+        let plmn = PlmnStatus::from_str(&plmn_str).expect("Unable to convert PLMN from string");
 
         let band_str = json["wwanadv"]["curBand"].as_str().unwrap().to_string();
         let mut band = ['\0'; 20];
@@ -142,7 +146,7 @@ impl NetgearParser {
             cell_id,
             signal_info,
             band,
-            device_info: device_info,
+            device_info,
             battery_status: Some(battery_status),
             device_temp: Some(device_temp),
             traffic_statistics: Some(traffic_statistics),

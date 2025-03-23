@@ -40,7 +40,7 @@ impl Connection {
         let bytes = self
             .telnet
             .write(command_str.as_bytes())
-            .inspect_err(|e| eprintln!("Telnet write error: {:?}", e))
+            .inspect_err(|e| eprintln!("Telnet write error: {e:?}"))
             .ok()
             .unwrap_or_default();
 
@@ -54,7 +54,7 @@ impl Connection {
             let event = self
                 .telnet
                 .read()
-                .inspect_err(|e| eprintln!("Telnet read error: {:?}", e))
+                .inspect_err(|e| eprintln!("Telnet read error: {e:?}"))
                 .ok();
 
             match event {
@@ -74,13 +74,17 @@ impl Connection {
                         break;
                     }
                     _ => {
-                        println!("Unhandled during reading from telnet: {:?}", event);
+                        println!("Unhandled during reading from telnet: {event:?}");
                     }
                 },
             }
         }
 
-        Some(str.split("\r\n").map(|s| s.to_string()).collect())
+        Some(
+            str.split("\r\n")
+                .map(std::string::ToString::to_string)
+                .collect(),
+        )
     }
     fn ati(&mut self) -> Option<ModemInfo> {
         self.send("ATI").map(|lines| {
@@ -89,21 +93,21 @@ impl Connection {
             for line in lines {
                 if line.contains("Revision") {
                     data.revision = line
-                        .split_once(":")
+                        .split_once(':')
                         .unwrap_or_default()
                         .1
                         .trim()
                         .to_string();
                 } else if line.contains("Model") {
                     data.model = line
-                        .split_once(":")
+                        .split_once(':')
                         .unwrap_or_default()
                         .1
                         .trim()
                         .to_string();
                 } else if line.contains("Manufacturer") {
                     data.manufacturer = line
-                        .split_once(":")
+                        .split_once(':')
                         .unwrap_or_default()
                         .1
                         .trim()
@@ -115,9 +119,9 @@ impl Connection {
         })
     }
     fn gstatus(&mut self) {
-        self.send("AT !GSTATUS?").map(|lines| {
+        if let Some(lines) = self.send("AT !GSTATUS?") {
             println!("{:?}", &lines);
-        });
+        }
     }
 }
 

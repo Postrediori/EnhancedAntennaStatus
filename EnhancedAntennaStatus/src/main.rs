@@ -1,25 +1,28 @@
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::too_many_lines)]
+
 mod network_utils;
 mod utils;
 
 mod bandwidth_utils;
-use bandwidth_utils::*;
+use bandwidth_utils::{format_bandwidth, BandwidthCounter, TrafficMode};
 
 mod modem_utils;
-use modem_utils::*;
+use modem_utils::{ModemError, ModemInfoParser, ModemStatus};
 
 mod netgear_parser;
-use netgear_parser::*;
+use netgear_parser::NetgearParser;
 
 mod huawei_parser;
-use huawei_parser::*;
+use huawei_parser::HuaweiParser;
 
 mod bar_plot_widget;
 mod res;
 
 mod main_window;
-use main_window::*;
+use main_window::MainWindow;
 
-use fltk::{prelude::*, *};
+use fltk::{app, prelude::*};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -35,14 +38,17 @@ enum Message {
 
 const MANUFACTURERS: [&str; 2] = ["Netgear", "Huawei"];
 
+const WIDTH: i32 = 840;
+const HEIGHT: i32 = 435;
+
+const DEFAULT_IP_ADDRESSES: [&str; 2] = ["192.168.1.1", "192.168.8.1"];
+
 fn main() {
     let app = app::App::default();
 
     let (tx, rx) = app::channel::<Message>();
     let (info_thread_tx, info_thread_rx) = app::channel();
 
-    const WIDTH: i32 = 840;
-    const HEIGHT: i32 = 435;
     let mut wnd = MainWindow::new(WIDTH, HEIGHT);
 
     /*
@@ -53,9 +59,11 @@ fn main() {
     }
     wnd.model_choice.set_value(0);
 
-    wnd.host_input.add("192.168.8.1");
-    wnd.host_input.add("192.168.1.1");
-    wnd.host_input.set_value("192.168.1.1");
+    // Fill list of standard IP addresses
+    for ip_address in DEFAULT_IP_ADDRESSES {
+        wnd.host_input.add(ip_address);
+    }
+    wnd.host_input.set_value(DEFAULT_IP_ADDRESSES[0]);
 
     wnd.connect_button.emit(tx, Message::StartStopPolling);
     wnd.close_button.emit(tx, Message::Quit);
@@ -173,7 +181,7 @@ fn main() {
                     Message::ReceivedInfo(info) => {
                         println!("{info}\n");
 
-                        wnd.set_info(info);
+                        wnd.set_info(&info);
 
                         if let Some(traffic_statistics) = info.traffic_statistics {
                             // Bandwidth

@@ -49,9 +49,9 @@ pub fn json_str_as_type<T: FromStr>(val: &serde_json::Value) -> Option<T> {
 
 /// Truncate unit at the end of the string
 fn truncate_unit(s: &mut String) {
-    const UNITS: [&'static str; 2] = ["dB", "dBm"];
+    const UNITS: [&str; 2] = ["dB", "dBm"];
 
-    for u in UNITS.iter() {
+    for u in &UNITS {
         if s.ends_with(u) {
             s.truncate(s.len() - u.len());
             break;
@@ -81,7 +81,7 @@ where
                     return Some(val);
                 }
                 Err(e) => {
-                    eprintln!("Error: parsing element '{}': {:?}", name, e);
+                    eprintln!("Error: parsing element '{name}': {e:?}");
                 }
             }
         }
@@ -103,7 +103,7 @@ where
                     return Some(val);
                 }
                 Err(e) => {
-                    eprintln!("Error parsing element '{}': {:?}", name, e);
+                    eprintln!("Error parsing element '{name}': {e:?}");
                 }
             }
         }
@@ -113,10 +113,10 @@ where
 
 pub fn xml_contains_required_parameters(xml: &xmltree::Element, parameters: &[&str]) -> bool {
     for p in parameters {
-        if get_xml_element(&xml, p).is_none() {
+        if get_xml_element(xml, p).is_none() {
             eprintln!("XML data doesn't have parameter '{p}'");
             return false;
         }
     }
-    return true;
+    true
 }

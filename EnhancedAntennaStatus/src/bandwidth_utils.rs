@@ -1,3 +1,6 @@
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+
 use std::time::SystemTime;
 
 pub const SIZE_KB: i64 = 1024;

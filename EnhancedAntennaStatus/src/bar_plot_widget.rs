@@ -1,4 +1,12 @@
-use fltk::{prelude::*, *};
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::similar_names)]
+
+use fltk::{draw, enums, prelude::*, widget, widget_extends};
 
 use chrono::{DateTime, Local};
 use std::cell::RefCell;
@@ -6,7 +14,7 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::bandwidth_utils::*;
+use crate::bandwidth_utils::{format_bandwidth, nearest_fib, TrafficStatistics, SIZE_MB};
 
 const HISTORY_SIZE: usize = 80;
 
@@ -45,7 +53,7 @@ impl BarPlotWidget {
         let max = Rc::from(RefCell::from(max));
         let history = Rc::from(RefCell::from(history));
 
-        let unit = "".to_string();
+        let unit = String::new();
         let unit = Rc::from(RefCell::from(unit));
 
         inner.draw({
@@ -55,6 +63,15 @@ impl BarPlotWidget {
             let mouse_coord = mouse_coord.clone();
             let unit = unit.clone();
             move |i| {
+                const MARGIN_X: i32 = 2;
+                const MARGIN_Y: i32 = 1;
+
+                const PALETTE: [(i32, enums::Color); 3] = [
+                    (50, enums::Color::Red),
+                    (85, enums::Color::from_rgb(255, 127, 0)),
+                    (100, enums::Color::DarkGreen),
+                ];
+
                 let min = *min.borrow();
                 let max = *max.borrow();
                 let history = history.borrow();
@@ -69,9 +86,6 @@ impl BarPlotWidget {
                     COLOR_BACKGROUND_INACTIVE
                 };
                 draw::draw_rect_fill(i.x(), i.y(), i.w(), i.h(), bg_color);
-
-                const MARGIN_X: i32 = 2;
-                const MARGIN_Y: i32 = 1;
 
                 let range = (max - min) as f64;
                 let dx = ((i.w() - 4) as f64) / (HISTORY_SIZE as f64);
@@ -112,20 +126,12 @@ impl BarPlotWidget {
                         let y = ((n - min) as f64) / range;
                         let yi = (100.0 * y) as i32;
 
-                        const PALETTE: [(i32, enums::Color); 3] = [
-                            (50, enums::Color::Red),
-                            (85, enums::Color::from_rgb(255, 127, 0)),
-                            (100, enums::Color::DarkGreen),
-                        ];
-
                         let c: usize = if yi < PALETTE[0].0 {
                             0
+                        } else if yi < PALETTE[1].0 {
+                            1
                         } else {
-                            if yi < PALETTE[1].0 {
-                                1
-                            } else {
-                                2
-                            }
+                            2
                         };
 
                         let x1 = (i.x() as f64 + dx * (k as f64)) as i32 + MARGIN_X;
@@ -151,7 +157,7 @@ impl BarPlotWidget {
                         let (t, n) = history[k];
                         let dt: DateTime<Local> = t.into();
 
-                        let n_str = format!("{} {}", n, unit);
+                        let n_str = format!("{n} {unit}");
                         let time_str = format!("{}", dt.format("%T"));
 
                         draw::set_font(enums::Font::Helvetica, 14);
@@ -200,11 +206,7 @@ impl BarPlotWidget {
             move |w, event| {
                 let mut mouse_coord = mouse_coord.borrow_mut();
                 let status = match event {
-                    enums::Event::Move => {
-                        *mouse_coord = Some(fltk::app::event_coords());
-                        true
-                    }
-                    enums::Event::Enter => {
+                    enums::Event::Enter | enums::Event::Move => {
                         *mouse_coord = Some(fltk::app::event_coords());
                         true
                     }
@@ -253,9 +255,9 @@ widget_extends!(BarPlotWidget, widget::Widget, inner);
  * DlUlBarPlotWidget
  */
 
-pub const COLOR_DL: enums::Color = enums::Color::from_hex(0x332288);
-pub const COLOR_UL: enums::Color = enums::Color::from_hex(0x88CCEE);
-pub const COLOR_DL_AND_UL: enums::Color = enums::Color::from_hex(0xDDCC77);
+pub const COLOR_DL: enums::Color = enums::Color::from_hex(0x00_33_22_88);
+pub const COLOR_UL: enums::Color = enums::Color::from_hex(0x00_88_CC_EE);
+pub const COLOR_DL_AND_UL: enums::Color = enums::Color::from_hex(0x00_DD_CC_77);
 
 pub struct DlUlBarPlotWidget {
     inner: widget::Widget,
@@ -276,6 +278,9 @@ impl DlUlBarPlotWidget {
             let history = history.clone();
             let mouse_coord = mouse_coord.clone();
             move |i| {
+                const MARGIN_X: i32 = 2;
+                const MARGIN_Y: i32 = 1;
+
                 let history = history.borrow();
                 let mouse_coord = mouse_coord.borrow();
 
@@ -287,9 +292,6 @@ impl DlUlBarPlotWidget {
                     COLOR_BACKGROUND_INACTIVE
                 };
                 draw::draw_rect_fill(i.x(), i.y(), i.w(), i.h(), bg_color);
-
-                const MARGIN_X: i32 = 2;
-                const MARGIN_Y: i32 = 1;
 
                 let dx = ((i.w() - MARGIN_X * 2) as f64) / (HISTORY_SIZE as f64);
 
@@ -460,11 +462,7 @@ impl DlUlBarPlotWidget {
             move |w, event| {
                 let mut mouse_coord = mouse_coord.borrow_mut();
                 let status = match event {
-                    enums::Event::Move => {
-                        *mouse_coord = Some(fltk::app::event_coords());
-                        true
-                    }
-                    enums::Event::Enter => {
+                    enums::Event::Enter | enums::Event::Move => {
                         *mouse_coord = Some(fltk::app::event_coords());
                         true
                     }

@@ -1,7 +1,8 @@
-use std::fmt;
+use std::fmt::{self, Display};
+use std::str::FromStr;
 
-use crate::bandwidth_utils::*;
-use crate::utils::*;
+use crate::bandwidth_utils::{TrafficMode, TrafficStatistics};
+use crate::utils::copy_string_to_array;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum NetworkMode {
@@ -44,14 +45,18 @@ pub struct PlmnStatus {
     pub plmn: [char; 6],
 }
 
-impl PlmnStatus {
-    pub fn from_string(plmn_str: &str) -> Self {
-        let mut plmn = ['\0'; 6];
-        copy_string_to_array!(plmn, plmn_str);
-        Self { plmn }
+impl Display for PlmnStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.plmn.iter().collect::<String>())
     }
-    pub fn to_string(&self) -> String {
-        String::from_iter(self.plmn.iter())
+}
+
+impl FromStr for PlmnStatus {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut plmn = ['\0'; 6];
+        copy_string_to_array!(plmn, s);
+        Ok(Self { plmn })
     }
 }
 
@@ -65,7 +70,9 @@ impl BatteryStatus {
     fn get_battery_percent_and_status(&self) -> (i64, String) {
         (
             self.percent,
-            String::from_iter(self.status.iter())
+            self.status
+                .iter()
+                .collect::<String>()
                 .trim_matches(char::from(0))
                 .to_string(),
         )
@@ -99,10 +106,14 @@ impl DeviceInformation {
     }
     pub fn get_manufacturer_and_model(&self) -> (String, String) {
         (
-            String::from_iter(self.manufacturer.iter())
+            self.manufacturer
+                .iter()
+                .collect::<String>()
                 .trim_matches(char::from(0))
                 .to_string(),
-            String::from_iter(self.model.iter())
+            self.model
+                .iter()
+                .collect::<String>()
                 .trim_matches(char::from(0))
                 .to_string(),
         )
@@ -150,13 +161,14 @@ impl ModemStatus {
         let ca_count = self.get_ca_count();
         let band = format!(
             "{}{}",
-            String::from_iter(self.band.iter())
-                .trim_matches(char::from(0))
-                .to_string(),
+            self.band
+                .iter()
+                .collect::<String>()
+                .trim_matches(char::from(0)),
             if ca_count > 0 {
                 format!("+{ca_count}CA")
             } else {
-                "".to_string()
+                String::new()
             }
         );
         band
@@ -167,11 +179,8 @@ impl ModemStatus {
         (cell_id_hex, cell_id)
     }
     pub fn get_battery_percent_and_status(&self) -> Option<(i64, String)> {
-        if let Some(battery_status) = self.battery_status {
-            Some(battery_status.get_battery_percent_and_status())
-        } else {
-            None
-        }
+        self.battery_status
+            .map(|battery_status| battery_status.get_battery_percent_and_status())
     }
 }
 
@@ -198,7 +207,7 @@ impl fmt::Display for ModemStatus {
                     lte_info.rsrq, lte_info.rsrp, lte_info.sinr
                 )
             }
-            _ => "".to_string(),
+            SignalInfo::None => String::new(),
         };
 
         write!(

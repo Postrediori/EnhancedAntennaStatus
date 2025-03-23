@@ -1,15 +1,19 @@
-use fltk::{prelude::*, *};
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::similar_names)]
 
-use crate::bandwidth_utils::*;
-use crate::bar_plot_widget::*;
-use crate::modem_utils::*;
+use fltk::{button, enums, frame, group, menu, misc, output, prelude::*, window};
+
+use crate::bandwidth_utils::{format_bandwidth, TrafficStatistics};
+use crate::bar_plot_widget::{BarPlotWidget, DlUlBarPlotWidget, COLOR_DL, COLOR_UL};
+use crate::modem_utils::{LteSignalInfo, ModemStatus, NetworkMode, SignalInfo, WcdmaSignalInfo};
 use crate::res::IconsAssets;
-use crate::utils::*;
+use crate::utils::ValueChangeObserver;
 
 /*
  * Poll timeout
  */
-const POLL_TIMEOUT_VALUES: [(u64, &'static str); 7] = [
+const POLL_TIMEOUT_VALUES: [(u64, &str); 7] = [
     (1, "1 sec"),
     (2, "2 sec"),
     (5, "5 sec"),
@@ -579,7 +583,7 @@ impl MainWindow {
             error_label,
         }
     }
-    pub fn set_info(&mut self, info: ModemStatus) {
+    pub fn set_info(&mut self, info: &ModemStatus) {
         self.network_mode_label.set_value(info.get_mode().as_str());
 
         self.rssi_label
@@ -588,11 +592,11 @@ impl MainWindow {
         self.plmn_label.set_value(&info.get_plmn());
 
         let band = info.get_band();
-        if !band.is_empty() {
+        if band.is_empty() {
+            self.band_label.hide();
+        } else {
             self.band_label.show();
             self.band_label.set_value(&info.get_band());
-        } else {
-            self.band_label.hide();
         }
 
         let (cell_id_hex, cell_id) = info.get_cell_id_hex_and_dec();
@@ -606,7 +610,7 @@ impl MainWindow {
         match info.signal_info {
             SignalInfo::Wcdma(wcdma_info) => self.set_wcdma_info(wcdma_info),
             SignalInfo::Lte(lte_info) => self.set_lte_info(lte_info),
-            _ => {}
+            SignalInfo::None => {}
         }
 
         // Modem model
@@ -615,10 +619,10 @@ impl MainWindow {
             .current_has_model
             .update_and_check_if_changed(model.is_empty())
         {
-            if !model.is_empty() {
-                self.model_label.show();
-            } else {
+            if model.is_empty() {
                 self.model_label.hide();
+            } else {
+                self.model_label.show();
             }
         }
 
@@ -642,7 +646,7 @@ impl MainWindow {
             }
         }
         if let Some((battery_percent, battery_status)) = battery_status {
-            let battery_percent = format!("{}%", battery_percent);
+            let battery_percent = format!("{battery_percent}%");
             self.battery_percent_label.set_value(&battery_percent);
             self.battery_status_label.set_value(&battery_status);
         }
