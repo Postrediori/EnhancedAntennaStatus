@@ -137,7 +137,7 @@ fn main() {
                                 Err(e) => {
                                     tx.send(Message::InfoError(e));
                                 }
-                            };
+                            }
 
                             let start_time = SystemTime::now();
 
@@ -206,7 +206,7 @@ fn main() {
                                         wnd.set_bandwidth_data(dlul);
                                     }
                                 }
-                            };
+                            }
                         }
                     }
                     Message::InfoOk => {

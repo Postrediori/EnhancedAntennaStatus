@@ -36,15 +36,7 @@ impl<T: PartialEq + Copy> ValueChangeObserver<T> {
 
 /// Parse parameter of JSON that is integer represented as string
 pub fn json_str_as_type<T: FromStr>(val: &serde_json::Value) -> Option<T> {
-    if let Some(val) = val.as_str() {
-        if let Ok(val) = val.parse::<T>() {
-            Some(val)
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+    val.as_str().and_then(|val| val.parse::<T>().ok())
 }
 
 /// Truncate unit at the end of the string

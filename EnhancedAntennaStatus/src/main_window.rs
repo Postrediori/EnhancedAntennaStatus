@@ -571,10 +571,10 @@ impl MainWindow {
             lte_group,
             lte_enb_cc_label,
             lte_pci_label,
-            rsrp_label,
-            rsrp_plot,
             rsrq_label,
             rsrq_plot,
+            rsrp_label,
+            rsrp_plot,
             sinr_label,
             sinr_plot,
             dl_label,
@@ -713,7 +713,7 @@ impl MainWindow {
                 self.wcdma_group.show();
             }
             _ => {}
-        };
+        }
 
         self.main_group.layout();
         self.wnd.redraw();
