@@ -5,7 +5,7 @@ mod network_utils;
 mod utils;
 
 mod bandwidth_utils;
-use bandwidth_utils::{format_bandwidth, BandwidthCounter, TrafficMode};
+use bandwidth_utils::{BandwidthCounter, TrafficMode, format_bandwidth};
 
 mod modem_utils;
 use modem_utils::{ModemError, ModemInfoParser, ModemStatus};
@@ -26,11 +26,11 @@ use fltk::{app, prelude::*};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum Message {
     GetInfo,
     StartStopPolling,
-    ReceivedInfo(ModemStatus),
+    ReceivedInfo(Box<ModemStatus>),
     InfoOk,
     InfoError(ModemError),
     Quit,
@@ -131,7 +131,7 @@ fn main() {
 
                             match modem_info {
                                 Ok(modem_info) => {
-                                    tx.send(Message::ReceivedInfo(modem_info));
+                                    tx.send(Message::ReceivedInfo(Box::from(modem_info)));
                                     tx.send(Message::InfoOk);
                                 }
                                 Err(e) => {

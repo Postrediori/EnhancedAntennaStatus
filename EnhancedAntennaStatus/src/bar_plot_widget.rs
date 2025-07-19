@@ -14,7 +14,7 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::bandwidth_utils::{format_bandwidth, nearest_fib, TrafficStatistics, SIZE_MB};
+use crate::bandwidth_utils::{SIZE_MB, TrafficStatistics, format_bandwidth, nearest_fib};
 
 const HISTORY_SIZE: usize = 80;
 
@@ -96,11 +96,7 @@ impl BarPlotWidget {
                             let x = cx - i.x() - MARGIN_X;
                             let k = (x as f64 / dx) as usize;
 
-                            if k < history.len() {
-                                Some(k)
-                            } else {
-                                None
-                            }
+                            if k < history.len() { Some(k) } else { None }
                         }
                         _ => None,
                     };
@@ -303,11 +299,7 @@ impl DlUlBarPlotWidget {
                             let x = cx - i.x() - MARGIN_X;
                             let k = (x as f64 / dx) as usize;
 
-                            if k < h.len() {
-                                Some(k)
-                            } else {
-                                None
-                            }
+                            if k < h.len() { Some(k) } else { None }
                         }
                         _ => None,
                     };

@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use crate::bandwidth_utils::{TrafficMode, TrafficStatistics, SIZE_TB};
+use crate::bandwidth_utils::{SIZE_TB, TrafficMode, TrafficStatistics};
 use crate::modem_utils::{
     BatteryStatus, DeviceInformation, DeviceTemperature, LteSignalInfo, ModemError,
     ModemInfoParser, ModemStatus, NetworkMode, PlmnStatus, SignalInfo, WcdmaSignalInfo,
@@ -120,20 +120,12 @@ impl NetgearParser {
 
         // Bandwidth
         let dl = if let Some(dl) = json_str_as_type::<i64>(&json["wwan"]["dataTransferredRx"]) {
-            if dl <= SIZE_TB {
-                dl * 8
-            } else {
-                0
-            }
+            if dl <= SIZE_TB { dl * 8 } else { 0 }
         } else {
             0
         };
         let ul = if let Some(ul) = json_str_as_type::<i64>(&json["wwan"]["dataTransferredTx"]) {
-            if ul <= SIZE_TB {
-                ul * 8
-            } else {
-                0
-            }
+            if ul <= SIZE_TB { ul * 8 } else { 0 }
         } else {
             0
         };

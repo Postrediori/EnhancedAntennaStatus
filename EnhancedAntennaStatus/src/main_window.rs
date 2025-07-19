@@ -4,8 +4,8 @@
 
 use fltk::{button, enums, frame, group, menu, misc, output, prelude::*, window};
 
-use crate::bandwidth_utils::{format_bandwidth, TrafficStatistics};
-use crate::bar_plot_widget::{BarPlotWidget, DlUlBarPlotWidget, COLOR_DL, COLOR_UL};
+use crate::bandwidth_utils::{TrafficStatistics, format_bandwidth};
+use crate::bar_plot_widget::{BarPlotWidget, COLOR_DL, COLOR_UL, DlUlBarPlotWidget};
 use crate::modem_utils::{LteSignalInfo, ModemStatus, NetworkMode, SignalInfo, WcdmaSignalInfo};
 use crate::res::IconsAssets;
 use crate::utils::ValueChangeObserver;
