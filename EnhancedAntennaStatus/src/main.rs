@@ -23,6 +23,7 @@ mod main_window;
 use main_window::MainWindow;
 
 use fltk::{app, prelude::*};
+use fltk_theme::{WidgetTheme, ThemeType};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
@@ -45,6 +46,9 @@ const DEFAULT_IP_ADDRESSES: [&str; 2] = ["192.168.1.1", "192.168.8.1"];
 
 fn main() {
     let app = app::App::default();
+    
+    let widget_theme = WidgetTheme::new(ThemeType::Metro);
+    widget_theme.apply();
 
     let (tx, rx) = app::channel::<Message>();
     let (info_thread_tx, info_thread_rx) = app::channel();
